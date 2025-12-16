@@ -1,0 +1,18 @@
+{
+  "name": "tabellone-wp",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client",
+    "shared"
+  ],
+  "scripts": {
+    "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
+    "dev": "npm run dev -w server",
+    "lint": "npm run lint -w server && npm run lint -w client"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

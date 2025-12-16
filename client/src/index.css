@@ -1,0 +1,75 @@
+:root {
+  color-scheme: light;
+  font-family: "Archivo", "Segoe UI", system-ui, sans-serif;
+  background: #0e1116;
+  color: #f7f7f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.05s ease, box-shadow 0.2s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #2ecc71, #16a085);
+  color: #0b0d10;
+}
+
+.btn.warn {
+  background: linear-gradient(135deg, #ff7f50, #ff512f);
+  color: #0b0d10;
+}
+
+.btn.ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7f7f7;
+}
+
+input,
+select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f7f7f7;
+}
+
+label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: rgba(247, 247, 247, 0.7);
+}
