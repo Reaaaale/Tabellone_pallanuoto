@@ -87,12 +87,23 @@ function ControlPage() {
   send({ type: "set_roster", payload: { teamId, players } });
   setIsEditingRoster((prev) => ({ ...prev, [teamId]: false }));
 };
-
+  
   const startExpulsion = (teamId: TeamSide, playerNumber: number) => {
     if (!playerNumber) return;
     send({ type: "start_expulsion", payload: { teamId, playerNumber } });
   };
+  // Gestione tempo manuale, se si rompe il timer risetta il tempo manualmente
+  const [manualMinutes, setManualMinutes] = useState("");
+  const [manualSeconds, setManualSeconds] = useState("");
 
+  const setRemainingTime = () => {
+    const mins = Number(manualMinutes) || 0;
+    const secs = Number(manualSeconds) || 0;
+    const totalMs = Math.max(0, (mins * 60 + secs) * 1000);
+    send({ type: "set_remaining_time", payload: { remainingMs: totalMs } });
+  };
+
+  
   return (
     <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -164,8 +175,30 @@ function ControlPage() {
               Timeout Ospiti ({snapshot?.teams.away.timeoutsRemaining ?? 3})
             </button>
           </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+            <input
+              type="number"
+              min={0}
+              placeholder="Min"
+              value={manualMinutes}
+              onChange={(e) => setManualMinutes(e.target.value)}
+              style={{ width: 70 }}
+            />
+            <span>:</span>
+            <input
+              type="number"
+              min={0}
+              max={59}
+              placeholder="Sec"
+              value={manualSeconds}
+              onChange={(e) => setManualSeconds(e.target.value)}
+              style={{ width: 70 }}
+            />
+            <button className="btn ghost" onClick={setRemainingTime}>
+              Imposta tempo
+            </button>
+          </div>
         </div>
-
         <div className="card">
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Espulsioni</div>
           <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>

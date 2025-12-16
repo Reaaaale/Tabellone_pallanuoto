@@ -41,6 +41,9 @@ export class MatchService {
       case "set_roster":
         this.match.setRoster(command.payload.teamId, command.payload.players);
         break;
+      case "set_remaining_time":
+        this.match.setRemainingTime(command.payload.remainingMs);
+        break;
       default:
         // Exhaustive check to catch future missing handlers
         const _exhaustive: never = command;

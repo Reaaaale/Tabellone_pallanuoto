@@ -94,6 +94,17 @@ export class Match {
     this.state.expulsions = [];
   }
 
+  setRemainingTime(remainingMs: number, now = Date.now()): void {
+    if (Number.isNaN(remainingMs) || remainingMs < 0) {
+      throw new CommandFailed("Tempo rimanente non valido");
+    }
+    const capped = Math.min(remainingMs, this.state.clock.periodDurationMs);
+    this.state.clock.remainingMs = capped;
+    if (this.state.clock.running) {
+      this.state.clock.startedAt = now; // riallineo il tempo rimanente al valore settato
+    }
+  }
+
   setPeriod(period: number): void {
     if (period < 1 || period > 4) {
       throw new CommandFailed("Periodo non valido");
