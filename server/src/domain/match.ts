@@ -121,6 +121,17 @@ export class Match {
     team.score += 1;
   }
 
+  undoGoal(teamId: TeamSide): void {
+    const team = this.state.teams[teamId];
+    if (!team) {
+      throw new CommandFailed(`Squadra ${teamId} non trovata`);
+    }
+    if (team.score <= 0) {
+      throw new CommandFailed("Nessun gol da rimuovere");
+    }
+    team.score -= 1;
+  }
+
   registerTimeout(teamId: TeamSide): void {
     const team = this.state.teams[teamId];
     if (!team) {

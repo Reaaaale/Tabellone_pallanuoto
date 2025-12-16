@@ -47,6 +47,7 @@ export type CommandMessage =
   | { type: "set_remaining_time"; payload: { remainingMs: number } }
   | { type: "set_period"; payload: { period: number } }
   | { type: "goal"; payload: { teamId: TeamSide } }
+  | { type: "undo_goal"; payload: { teamId: TeamSide } }
   | { type: "timeout"; payload: { teamId: TeamSide } }
   | { type: "start_expulsion"; payload: { teamId: TeamSide; playerNumber: number } }
   | { type: "set_team_info"; payload: { teamId: TeamSide; name?: string; logoUrl?: string } }

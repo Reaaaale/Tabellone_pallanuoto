@@ -132,6 +132,10 @@ function ControlPage() {
             <button className="btn primary" onClick={() => send({ type: "goal", payload: { teamId: "home" } })}>
               Goal Casa
             </button>
+            <button
+            className="btn ghost"
+            disabled={(snapshot?.teams.home.score ?? 0) <= 0}
+            onClick={() => send({ type: "undo_goal", payload: { teamId: "home" } })}>-1 Casa</button>
           </div>
         </div>
 
@@ -145,6 +149,10 @@ function ControlPage() {
             <button className="btn primary" onClick={() => send({ type: "goal", payload: { teamId: "away" } })}>
               Goal Ospiti
             </button>
+            <button
+            className="btn ghost"
+            disabled={(snapshot?.teams.away.score ?? 0) <= 0}
+            onClick={() => send({ type: "undo_goal", payload: { teamId: "away" } })}>-1 Ospiti</button>
           </div>
         </div>
       </div>

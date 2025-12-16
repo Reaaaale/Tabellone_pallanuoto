@@ -26,6 +26,10 @@ export class MatchService {
       case "goal":
         this.match.addGoal(command.payload.teamId);
         break;
+      case "undo_goal":
+        this.match.undoGoal(command.payload.teamId);
+        break;
+        
       case "timeout":
         this.match.registerTimeout(command.payload.teamId);
         break;
