@@ -200,7 +200,7 @@ setRoster(teamId: TeamSide, players: Player[]): void {
       id: randomUUID(),
       teamId,
       playerNumber,
-      referenceRemainingMs: 20_000,
+      referenceRemainingMs: 18_000,
       startedAt: this.state.clock.running ? now : undefined,
       running: this.state.clock.running,
     };
