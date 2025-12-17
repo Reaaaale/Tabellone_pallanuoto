@@ -33,6 +33,20 @@ npm install
    - `http://localhost:5173/control` per l'operatore
    - `http://localhost:5173/display` per il LED wall (fullscreen)
 
+## Funzionalita principali
+
+- Gestione punteggio con aggiunta e decremento goal (per correzioni rapide).
+- Timer di gara con avvio/pausa/reset e impostazione manuale del tempo rimanente.
+- Selezione periodo (1-4) e gestione timeout squadra.
+- Gestione espulsioni attive (20s) con selezione giocatore.
+- Roster squadre: inserimento tramite textarea, poi visualizzazione lista giocatori.
+- Espulsioni personali per giocatore (0-3) con indicatori: giallo per 1-2, rosso alla terza.
+- Display ottimizzato per LED wall con punteggi, timer, roster ed espulsioni attive.
+
+## Controlli rapidi
+
+- Spazio: avvia/pausa il timer (se non stai scrivendo in un input).
+
 ## Build e lint
 
 - Build di tutti i pacchetti: `npm run build`
@@ -40,6 +54,11 @@ npm install
 - Solo client: `npm run build -w client`
 - Solo shared: `npm run build -w shared`
 - Lint (server + client): `npm run lint`
+
+## Configurazione
+
+- `VITE_WS_URL` (client): URL WebSocket del server. Default `ws://localhost:4000`.
+- `PORT` (server): porta del WebSocket server. Default `4000`.
 
 ## Note architetturali
 
