@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useMatchChannel } from "../hooks/useMatchChannel";
 import { formatClock } from "../utils/time";
 import { TeamSide } from "@tabellone/shared";
@@ -129,8 +130,39 @@ function PlayerList({
 
 function DisplayPage() {
   const { snapshot } = useMatchChannel(WS_URL);
+  const [showGoalVideo, setShowGoalVideo] = useState(false);
+  const [goalVideoKey, setGoalVideoKey] = useState(0);
+  const prevHomeScoreRef = useRef<number | null>(null);
+  const goalTimerRef = useRef<number | null>(null);
 
   const clockLabel = snapshot ? formatClock(snapshot.clock.remainingMs) : "00:00";
+
+  useEffect(() => {
+    if (!snapshot) return;
+    const score = snapshot.teams.home.score;
+    const prev = prevHomeScoreRef.current;
+
+    if (prev !== null && score > prev) {
+      setGoalVideoKey(Date.now());
+      setShowGoalVideo(true);
+      if (goalTimerRef.current !== null) {
+        window.clearTimeout(goalTimerRef.current);
+      }
+      goalTimerRef.current = window.setTimeout(() => {
+        setShowGoalVideo(false);
+      }, 5000);
+    }
+
+    prevHomeScoreRef.current = score;
+  }, [snapshot]);
+
+  useEffect(() => {
+    return () => {
+      if (goalTimerRef.current !== null) {
+        window.clearTimeout(goalTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div
@@ -144,6 +176,27 @@ function DisplayPage() {
         gap: 12,
       }}
     >
+      {showGoalVideo && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "#000",
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          <video
+            key={goalVideoKey}
+            src="/goal-home.mp4"
+            autoPlay
+            muted
+            playsInline
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          />
+        </div>
+      )}
       <header
         style={{
           display: "flex",
