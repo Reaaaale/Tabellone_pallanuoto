@@ -29,6 +29,29 @@ function ControlPage() {
     });
   }, [snapshot, isEditingRoster]);
 
+  const clockLabel = snapshot ? formatClock(snapshot.clock.remainingMs) : "00:00";
+  const running = snapshot?.clock.running ?? false;
+
+  useEffect(()=> {
+    const onKeyDown = (event:KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.getAttribute("contenteditable") === "true";
+
+      if (isTyping) return;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        send({ type: running ? "pause_clock" : "start_clock" });
+      }
+    };
+    
+    window.addEventListener("keydown", onKeyDown);
+    return () => { window.removeEventListener("keydown", onKeyDown); };
+  }, [running, send]);
+
   const expulsionPlayers = useMemo(() => {
     if (!snapshot) return { home: [], away: [] };
     return {
@@ -36,9 +59,6 @@ function ControlPage() {
       away: snapshot.teams.away.info.players,
     };
   }, [snapshot]);
-
-  const clockLabel = snapshot ? formatClock(snapshot.clock.remainingMs) : "00:00";
-  const running = snapshot?.clock.running ?? false;
 
   const submitRoster = (teamId: TeamSide) => {
   // Debug: mostra esattamente cosa c'è nella textarea (anche caratteri invisibili)
@@ -70,9 +90,10 @@ function ControlPage() {
       if (!Number.isFinite(number) || number <= 0) return undefined;
       if (!name) return undefined;
 
-      return { number, name };
+      const prev = snapshot?.teams[teamId].info.players.find((p) => p.number === number);
+      return { number, name, ejections: prev?.ejections ?? 0 };
     })
-    .filter((p): p is { number: number; name: string } => Boolean(p));
+    .filter((p): p is { number: number; name: string; ejections: number } => Boolean(p));
 
   console.log("[submitRoster] PARSED players:", players);
 
@@ -91,6 +112,10 @@ function ControlPage() {
   const startExpulsion = (teamId: TeamSide, playerNumber: number) => {
     if (!playerNumber) return;
     send({ type: "start_expulsion", payload: { teamId, playerNumber } });
+  };
+
+  const setEjections = (teamId: TeamSide, playerNumber: number, ejections: number) => {
+    send({ type: "set_player_ejections", payload: { teamId, playerNumber, ejections } });
   };
   // Gestione tempo manuale, se si rompe il timer risetta il tempo manualmente
   const [manualMinutes, setManualMinutes] = useState("");
@@ -262,31 +287,113 @@ function ControlPage() {
             <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
               Caricati: {snapshot?.teams[teamId].info.players.length ?? 0} giocatori
             </div>
-            <div style={{ marginTop: 8 }}>
-              <label>Roster (numero nome, uno per riga)</label>
-              <textarea
-                style={{
-                  width: "100%",
-                  height: 150,
-                  marginTop: 4,
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#f7f7f7",
-                  borderRadius: 10,
-                  padding: 10,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  resize: "vertical",
-                }}
-                value={rosterText[teamId]}
-                onFocus={() => setIsEditingRoster({ ...isEditingRoster, [teamId]: true })}
-                //onBlur={() => setIsEditingRoster({ ...isEditingRoster, [teamId]: false })}
-                onChange={(e) => setRosterText({ ...rosterText, [teamId]: e.target.value })}
-              />
-              <div style={{ textAlign: "right", marginTop: 6 }}>
-                <button type="button" className="btn ghost" onClick={() => submitRoster(teamId)}>
-                  Salva roster {teamId === "home" ? "Casa" : "Ospiti"}
-                </button>
+
+            {isEditingRoster[teamId] ? (
+              <div style={{ marginTop: 8 }}>
+                <label>Roster (numero nome, uno per riga)</label>
+                <textarea
+                  style={{
+                    width: "100%",
+                    height: 150,
+                    marginTop: 4,
+                    background: "rgba(255,255,255,0.05)",
+                    color: "#f7f7f7",
+                    borderRadius: 10,
+                    padding: 10,
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    resize: "vertical",
+                  }}
+                  value={rosterText[teamId]}
+                  onChange={(e) => setRosterText({ ...rosterText, [teamId]: e.target.value })}
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => {
+                      setIsEditingRoster((prev) => ({ ...prev, [teamId]: false }));
+                      setRosterText((prev) => ({
+                        ...prev,
+                        [teamId]:
+                          snapshot?.teams[teamId].info.players
+                            .map((p) => `${p.number} ${p.name}`)
+                            .join("\n") ?? "",
+                      }));
+                    }}
+                  >
+                    Annulla
+                  </button>
+                  <button type="button" className="btn primary" onClick={() => submitRoster(teamId)}>
+                    Salva roster {teamId === "home" ? "Casa" : "Ospiti"}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                {(snapshot?.teams[teamId].info.players ?? []).map((p) => {
+                  const colors = [
+                    p.ejections >= 1 ? "#f6c744" : "rgba(255,255,255,0.15)",
+                    p.ejections >= 2 ? "#f6c744" : "rgba(255,255,255,0.15)",
+                    p.ejections >= 3 ? "#e63946" : "rgba(255,255,255,0.15)",
+                  ];
+                  return (
+                    <div
+                      key={p.number}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto",
+                        alignItems: "center",
+                        padding: "8px 10px",
+                        background: "rgba(255,255,255,0.03)",
+                        borderRadius: 8,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700 }}>#{p.number} {p.name}</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        {[0, 1, 2].map((idx) => (
+                          <span
+                            key={idx}
+                            onClick={() => {
+                              const level = idx + 1;
+                              const next = p.ejections === level ? level - 1 : level;
+                              setEjections(teamId, p.number, next);
+                            }}
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: "50%",
+                              display: "inline-block",
+                              background: colors[idx],
+                              cursor: "pointer",
+                              border: "1px solid rgba(255,255,255,0.2)",
+                            }}
+                            title={`Espulsioni: ${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ textAlign: "right" }}>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => {
+                      setIsEditingRoster((prev) => ({ ...prev, [teamId]: true }));
+                      setRosterText((prev) => ({
+                        ...prev,
+                        [teamId]:
+                          snapshot?.teams[teamId].info.players
+                            .map((p) => `${p.number} ${p.name}`)
+                            .join("\n") ?? "",
+                      }));
+                    }}
+                  >
+                    Modifica roster
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -3,6 +3,7 @@ export type TeamSide = "home" | "away";
 export interface Player {
   number: number;
   name: string;
+  ejections: number;
 }
 
 export interface TeamInfo {
@@ -49,6 +50,7 @@ export type CommandMessage =
   | { type: "goal"; payload: { teamId: TeamSide } }
   | { type: "undo_goal"; payload: { teamId: TeamSide } }
   | { type: "timeout"; payload: { teamId: TeamSide } }
+  | { type: "set_player_ejections"; payload: { teamId: TeamSide; playerNumber: number; ejections: number } }
   | { type: "start_expulsion"; payload: { teamId: TeamSide; playerNumber: number } }
   | { type: "set_team_info"; payload: { teamId: TeamSide; name?: string; logoUrl?: string } }
   | { type: "set_roster"; payload: { teamId: TeamSide; players: Player[] } };

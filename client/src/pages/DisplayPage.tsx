@@ -57,7 +57,7 @@ function PlayerList({
   players,
   side,
 }: {
-  players: { number: number; name: string }[];
+  players: { number: number; name: string; ejections: number }[];
   side: TeamSide;
 }) {
   return (
@@ -93,12 +93,34 @@ function PlayerList({
               placeItems: "center",
               fontWeight: 900,
               fontSize: 22,
-              color: "#0a0c0f",
-            }}
-          >
-            {p.number}
+            color: "#0a0c0f",
+          }}
+        >
+          {p.number}
+        </div>
+          <div style={{ fontSize: 20, fontWeight: 700, textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span>{p.name}</span>
+            <span style={{ display: "flex", gap: 6 }}>
+              {[0, 1, 2].map((idx) => {
+                const active = p.ejections >= idx + 1;
+                const color =
+                  idx === 2 ? (active ? "#e63946" : "rgba(255,255,255,0.18)") : active ? "#f6c744" : "rgba(255,255,255,0.18)";
+                return (
+                  <span
+                    key={idx}
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      display: "inline-block",
+                      background: color,
+                      border: "1px solid rgba(255,255,255,0.2)",
+                    }}
+                  />
+                );
+              })}
+            </span>
           </div>
-          <div style={{ fontSize: 20, fontWeight: 700, textTransform: "uppercase" }}>{p.name}</div>
         </div>
       ))}
     </div>

@@ -104,6 +104,18 @@ export class Match {
       this.state.clock.startedAt = now; // riallineo il tempo rimanente al valore settato
     }
   }
+  
+  setPlayerEjections(teamId: TeamSide, playerNumber: number, ejections: number): void {
+  const team = this.state.teams[teamId];
+  if (!team) throw new CommandFailed(`Squadra ${teamId} non trovata`);
+  const idx = team.info.players.findIndex((p) => p.number === playerNumber);
+  if (idx === -1) throw new CommandFailed("Giocatore non trovato");
+  const clamped = Math.max(0, Math.min(3, ejections));
+  const player = team.info.players[idx];
+  team.info.players[idx] = { ...player, ejections: clamped };
+}
+
+
 
   setPeriod(period: number): void {
     if (period < 1 || period > 4) {
@@ -127,7 +139,7 @@ export class Match {
       throw new CommandFailed(`Squadra ${teamId} non trovata`);
     }
     if (team.score <= 0) {
-      throw new CommandFailed("Nessun gol da rimuovere");
+      throw new CommandFailed("Il punteggio non può essere negativo");
     }
     team.score -= 1;
   }

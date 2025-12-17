@@ -48,6 +48,13 @@ export class MatchService {
       case "set_remaining_time":
         this.match.setRemainingTime(command.payload.remainingMs);
         break;
+      case "set_player_ejections":
+        this.match.setPlayerEjections(
+          command.payload.teamId,
+          command.payload.playerNumber,
+          command.payload.ejections
+        );
+        break;
       default:
         // Exhaustive check to catch future missing handlers
         const _exhaustive: never = command;
