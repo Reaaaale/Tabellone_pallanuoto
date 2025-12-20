@@ -120,6 +120,18 @@ function ControlPage() {
     send({ type: "set_remaining_time", payload: { remainingMs: totalMs } });
   };
 
+  const updateTeamInfo = (teamId: TeamSide, partial: { name?: string; logoUrl?: string }) => {
+    const current = snapshot?.teams[teamId].info;
+    send({
+      type: "set_team_info",
+      payload: {
+        teamId,
+        name: partial.name ?? current?.name,
+        logoUrl: partial.logoUrl ?? current?.logoUrl,
+      },
+    });
+  };
+
   const renderRosterCard = (teamId: TeamSide) => (
     <div className="card" style={{ display: "grid", gridTemplateRows: "auto auto 1fr", gap: 8, minHeight: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -128,14 +140,14 @@ function ControlPage() {
           <input
             placeholder="Nome squadra"
             defaultValue={snapshot?.teams[teamId].info.name}
-            onBlur={(e) => send({ type: "set_team_info", payload: { teamId, name: e.target.value } })}
+            onBlur={(e) => updateTeamInfo(teamId, { name: e.target.value })}
           />
         </div>
         <input
           placeholder="URL logo"
           style={{ width: "50%" }}
           defaultValue={snapshot?.teams[teamId].info.logoUrl}
-          onBlur={(e) => send({ type: "set_team_info", payload: { teamId, logoUrl: e.target.value } })}
+          onBlur={(e) => updateTeamInfo(teamId, { logoUrl: e.target.value })}
         />
       </div>
       <div style={{ fontSize: 12, opacity: 0.7 }}>
