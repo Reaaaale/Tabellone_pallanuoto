@@ -89,12 +89,24 @@ function PlayerList({
         background: "rgba(0,0,0,0.18)",
         borderRadius: 12,
         border: `1px solid ${palette.cardBorder}`,
-        overflow: "hidden",
         boxShadow: "0 6px 18px rgba(0,0,0,0.3)",
+        padding: 6,
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 6,
       }}
     >
       {players.length === 0 && (
-        <div style={{ padding: "10px 12px", opacity: 0.6, fontSize: 16, color: palette.muted }}>
+        <div
+          style={{
+            gridColumn: "1 / -1",
+            padding: "10px 12px",
+            opacity: 0.6,
+            fontSize: 16,
+            color: palette.muted,
+            textAlign: "center",
+          }}
+        >
           Nessun giocatore caricato
         </div>
       )}
@@ -103,22 +115,23 @@ function PlayerList({
           key={p.number}
           style={{
             display: "grid",
-            gridTemplateColumns: "52px 1fr",
+            gridTemplateColumns: "40px 1fr",
             alignItems: "center",
-            padding: "8px 10px",
+            padding: "5px 6px",
             background: p.number % 2 === 0 ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.05)",
+            borderRadius: 8,
           }}
         >
           <div
             style={{
-              width: 46,
-              height: 46,
-              borderRadius: 10,
+              width: 34,
+              height: 34,
+              borderRadius: 8,
               background: side === "home" ? "#1faa59" : "#0f766e",
               display: "grid",
               placeItems: "center",
               fontWeight: 900,
-              fontSize: 18,
+              fontSize: 14,
               color: "#0a0c0f",
             }}
           >
@@ -126,18 +139,35 @@ function PlayerList({
           </div>
           <div
             style={{
-              fontSize: 16,
+              fontSize: 13,
               fontWeight: 700,
               textTransform: "uppercase",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: 8,
+              gap: 6,
               color: palette.text,
+              minWidth: 0,
             }}
           >
-            <span>{p.name}</span>
-            <span style={{ display: "flex", gap: 5 }}>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+            <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              {p.goals > 0 && (
+                <span
+                  style={{
+                    minWidth: 20,
+                    padding: "2px 6px",
+                    borderRadius: 8,
+                    background: palette.accentSoft,
+                    color: palette.accent,
+                    fontWeight: 800,
+                    fontSize: 11,
+                  }}
+                  title={`${p.goals} gol`}
+                >
+                  {p.goals}
+                </span>
+              )}
               {[0, 1, 2].map((idx) => {
                 const active = p.ejections >= idx + 1;
                 const color =
@@ -146,8 +176,8 @@ function PlayerList({
                   <span
                     key={idx}
                     style={{
-                      width: 12,
-                      height: 12,
+                      width: 8,
+                      height: 8,
                       borderRadius: "50%",
                       display: "inline-block",
                       background: color,
@@ -264,11 +294,11 @@ function DisplayPage() {
           <div style={{ opacity: 0.65, fontSize: 14 }}>Gara in corso</div>
         </header>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1.05fr 1fr",
-            gap: 12,
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1.1fr 1fr",
+              gap: 8,
             alignItems: "stretch",
             minHeight: 0,
           }}
@@ -288,10 +318,10 @@ function DisplayPage() {
               background: "linear-gradient(180deg, rgba(91,225,175,0.1), rgba(12,32,25,0.85))",
               borderRadius: 16,
               border: `1px solid ${palette.cardBorder}`,
-              padding: "14px 16px",
+              padding: "12px 14px",
               display: "grid",
               gridTemplateRows: "auto 1fr auto",
-              gap: 10,
+              gap: 8,
               textAlign: "center",
               minHeight: 0,
               boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
@@ -300,7 +330,7 @@ function DisplayPage() {
             <div style={{ fontSize: 14, opacity: 0.8, letterSpacing: 1, color: palette.muted }}>TEMPO</div>
             <div
               style={{
-                fontSize: 104,
+                fontSize: 96,
                 fontWeight: 900,
                 lineHeight: 0.95,
                 whiteSpace: "nowrap",
@@ -313,7 +343,7 @@ function DisplayPage() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 8,
+                gap: 6,
                 alignItems: "center",
                 fontWeight: 700,
                 fontSize: 13,
@@ -352,12 +382,12 @@ function DisplayPage() {
                     }}
                   >
                     {exp.teamId === "home" ? "CASA" : "OSP"} · #{exp.playerNumber} · {formatClock(exp.remainingMs)}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ opacity: 0.6, fontSize: 12, color: palette.muted }}>Nessuna espulsione attiva</div>
-            )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ opacity: 0.6, fontSize: 12, color: palette.muted }}>Nessuna espulsione attiva</div>
+              )}
           </div>
 
           <div style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 6, minHeight: 0 }}>

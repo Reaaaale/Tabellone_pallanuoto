@@ -106,14 +106,21 @@ export class Match {
   }
   
   setPlayerEjections(teamId: TeamSide, playerNumber: number, ejections: number): void {
-  const team = this.state.teams[teamId];
-  if (!team) throw new CommandFailed(`Squadra ${teamId} non trovata`);
-  const idx = team.info.players.findIndex((p) => p.number === playerNumber);
-  if (idx === -1) throw new CommandFailed("Giocatore non trovato");
-  const clamped = Math.max(0, Math.min(3, ejections));
-  const player = team.info.players[idx];
-  team.info.players[idx] = { ...player, ejections: clamped };
-}
+    const team = this.state.teams[teamId];
+    if (!team) throw new CommandFailed(`Squadra ${teamId} non trovata`);
+    const idx = team.info.players.findIndex((p) => p.number === playerNumber);
+    if (idx === -1) throw new CommandFailed("Giocatore non trovato");
+    const clamped = Math.max(0, Math.min(3, ejections));
+    const player = team.info.players[idx];
+    team.info.players[idx] = { ...player, ejections: clamped };
+
+    // se si rimuove l'espulsione, elimina eventuali timer attivi per quel giocatore
+    if (clamped <= 0) {
+      this.state.expulsions = this.state.expulsions.filter(
+        (exp) => !(exp.teamId === teamId && exp.playerNumber === playerNumber)
+      );
+    }
+  }
 
 
 
@@ -125,12 +132,20 @@ export class Match {
     this.resetClock();
   }
 
-  addGoal(teamId: TeamSide): void {
+  addGoal(teamId: TeamSide, playerNumber?: number): void {
     const team = this.state.teams[teamId];
     if (!team) {
       throw new CommandFailed(`Squadra ${teamId} non trovata`);
     }
     team.score += 1;
+
+    if (playerNumber !== undefined) {
+      const idx = team.info.players.findIndex((p) => p.number === playerNumber);
+      if (idx !== -1) {
+        const player = team.info.players[idx];
+        team.info.players[idx] = { ...player, goals: (player.goals ?? 0) + 1 };
+      }
+    }
   }
 
   undoGoal(teamId: TeamSide): void {
@@ -156,6 +171,11 @@ export class Match {
     this.pauseClock();
   }
 
+  resetTimeouts(): void {
+    this.state.teams.home.timeoutsRemaining = 3;
+    this.state.teams.away.timeoutsRemaining = 3;
+  }
+
   updateTeamInfo(teamId: TeamSide, info: Partial<Omit<TeamInfo, "id">>): void {
     const team = this.state.teams[teamId];
     if (!team) {
@@ -164,25 +184,27 @@ export class Match {
     team.info = { ...team.info, ...info, id: teamId };
   }
 
-setRoster(teamId: TeamSide, players: Player[]): void {
-  if (players.length > 15) {
-    throw new CommandFailed("Massimo 15 giocatori per squadra");
+  setRoster(teamId: TeamSide, players: Player[]): void {
+    if (players.length > 15) {
+      throw new CommandFailed("Massimo 15 giocatori per squadra");
+    }
+
+    const team = this.state.teams[teamId];
+    if (!team) {
+      throw new CommandFailed(`Squadra ${teamId} non trovata`);
+    }
+
+    const prevByNumber = new Map<number, Player>(team.info.players.map((p) => [p.number, p]));
+
+    team.info.players = players.map((p) => {
+      const prev = prevByNumber.get(p.number);
+      return {
+        ...p,
+        goals: p.goals ?? prev?.goals ?? 0,
+        ejections: p.ejections ?? prev?.ejections ?? 0,
+      };
+    });
   }
-
-  const team = this.state.teams[teamId];
-  if (!team) {
-    throw new CommandFailed(`Squadra ${teamId} non trovata`);
-  }
-
-  team.info.players = players;
-
-  //  DEBUG
-  console.log(
-    "[DEBUG setRoster] STATE players",
-    teamId,
-    this.state.teams[teamId].info.players
-  );
-}
 
 
   startExpulsion(teamId: TeamSide, playerNumber: number, now = Date.now()): void {

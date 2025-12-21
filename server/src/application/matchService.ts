@@ -24,7 +24,7 @@ export class MatchService {
         this.match.setPeriod(command.payload.period);
         break;
       case "goal":
-        this.match.addGoal(command.payload.teamId);
+        this.match.addGoal(command.payload.teamId, command.payload.playerNumber);
         break;
       case "undo_goal":
         this.match.undoGoal(command.payload.teamId);
@@ -32,6 +32,9 @@ export class MatchService {
         
       case "timeout":
         this.match.registerTimeout(command.payload.teamId);
+        break;
+      case "reset_timeouts":
+        this.match.resetTimeouts();
         break;
       case "start_expulsion":
         this.match.startExpulsion(command.payload.teamId, command.payload.playerNumber);
