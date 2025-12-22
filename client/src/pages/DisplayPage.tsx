@@ -79,10 +79,17 @@ function TeamHeader({
 function PlayerList({
   players,
   side,
+  coachName,
 }: {
-  players: { number: number; name: string; ejections: number }[];
+  players: { number: number; name: string; ejections: number; goals: number }[];
   side: TeamSide;
+  coachName?: string;
 }) {
+  const sorted = [...players].sort((a, b) => a.number - b.number);
+  const half = Math.ceil(sorted.length / 2);
+  const left = sorted.slice(0, half);
+  const right = sorted.slice(half);
+
   return (
     <div
       style={{
@@ -110,84 +117,145 @@ function PlayerList({
           Nessun giocatore caricato
         </div>
       )}
-      {players.map((p) => (
+      {/* coach central row if even number of players */}
+      {coachName && players.length % 2 === 0 && players.length > 0 && (
         <div
-          key={p.number}
           style={{
-            display: "grid",
-            gridTemplateColumns: "40px 1fr",
-            alignItems: "center",
-            padding: "5px 6px",
-            background: p.number % 2 === 0 ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.05)",
-            borderRadius: 8,
+            gridColumn: "1 / -1",
+            padding: "10px 12px",
+            textAlign: "center",
+            fontWeight: 800,
+            color: palette.muted,
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.03)",
+            border: `1px dashed ${palette.cardBorder}`,
           }}
         >
-          <div
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              background: side === "home" ? "#1faa59" : "#0f766e",
-              display: "grid",
-              placeItems: "center",
-              fontWeight: 900,
-              fontSize: 14,
-              color: "#0a0c0f",
-            }}
-          >
-            {p.number}
-          </div>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 6,
-              color: palette.text,
-              minWidth: 0,
-            }}
-          >
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-            <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              {p.goals > 0 && (
-                <span
-                  style={{
-                    minWidth: 20,
-                    padding: "2px 6px",
-                    borderRadius: 8,
-                    background: palette.accentSoft,
-                    color: palette.accent,
-                    fontWeight: 800,
-                    fontSize: 11,
-                  }}
-                  title={`${p.goals} gol`}
-                >
-                  {p.goals}
+          Allenatore: {coachName}
+        </div>
+      )}
+      {[left, right].map((column, colIdx) => (
+        <div key={colIdx} style={{ display: "grid", gap: 6 }}>
+          {column.map((p) => (
+            <div
+              key={p.number}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "40px 1fr",
+                alignItems: "center",
+                padding: "5px 6px",
+                background: p.number % 2 === 0 ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.05)",
+                borderRadius: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  background: side === "home" ? "#1faa59" : "#0f766e",
+                  display: "grid",
+                  placeItems: "center",
+                  fontWeight: 900,
+                  fontSize: 14,
+                  color: "#0a0c0f",
+                }}
+              >
+                {p.number}
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 6,
+                  color: palette.text,
+                  minWidth: 0,
+                }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  {p.goals > 0 && (
+                    <span
+                      style={{
+                        minWidth: 20,
+                        padding: "2px 6px",
+                        borderRadius: 8,
+                        background: palette.accentSoft,
+                        color: palette.accent,
+                        fontWeight: 800,
+                        fontSize: 11,
+                      }}
+                      title={`${p.goals} gol`}
+                    >
+                      {p.goals}
+                    </span>
+                  )}
+                  {[0, 1, 2].map((idx) => {
+                    const active = p.ejections >= idx + 1;
+                    const color =
+                      idx === 2 ? (active ? "#e63946" : "rgba(255,255,255,0.18)") : active ? "#f6c744" : "rgba(255,255,255,0.18)";
+                    return (
+                      <span
+                        key={idx}
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          display: "inline-block",
+                          background: color,
+                          border: "1px solid rgba(255,255,255,0.2)",
+                        }}
+                      />
+                    );
+                  })}
                 </span>
-              )}
-              {[0, 1, 2].map((idx) => {
-                const active = p.ejections >= idx + 1;
-                const color =
-                  idx === 2 ? (active ? "#e63946" : "rgba(255,255,255,0.18)") : active ? "#f6c744" : "rgba(255,255,255,0.18)";
-                return (
-                  <span
-                    key={idx}
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      display: "inline-block",
-                      background: color,
-                      border: "1px solid rgba(255,255,255,0.2)",
-                    }}
-                  />
-                );
-              })}
-            </span>
-          </div>
+              </div>
+            </div>
+          ))}
+          {/* coach as last item if odd player count */}
+          {coachName && players.length % 2 === 1 && colIdx === 1 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "40px 1fr",
+                alignItems: "center",
+                padding: "5px 6px",
+                background: "rgba(255,255,255,0.04)",
+                borderRadius: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  background: "rgba(255,255,255,0.15)",
+                  display: "grid",
+                  placeItems: "center",
+                  fontWeight: 900,
+                  fontSize: 12,
+                  color: palette.text,
+                  border: `1px solid ${palette.cardBorder}`,
+                }}
+              >
+                ALL
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  color: palette.text,
+                }}
+              >
+                {coachName}
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -198,14 +266,23 @@ function DisplayPage() {
   const { snapshot } = useMatchChannel(WS_URL);
   const [showGoalVideo, setShowGoalVideo] = useState(false);
   const [goalVideoKey, setGoalVideoKey] = useState(0);
-  const [goalVideoEnabled, setGoalVideoEnabled] = useState(true);
+  const [goalVideoEnabled] = useState(false);
   const prevHomeScoreRef = useRef<number | null>(null);
   const goalTimerRef = useRef<number | null>(null);
 
   const clockLabel = snapshot ? formatClock(snapshot.clock.remainingMs) : "00:00";
 
   useEffect(() => {
-    if (!snapshot || !goalVideoEnabled) return;
+    if (!snapshot) return;
+    if (!goalVideoEnabled) {
+      setShowGoalVideo(false);
+      if (goalTimerRef.current !== null) {
+        window.clearTimeout(goalTimerRef.current);
+        goalTimerRef.current = null;
+      }
+      prevHomeScoreRef.current = snapshot.teams.home.score;
+      return;
+    }
     const score = snapshot.teams.home.score;
     const prev = prevHomeScoreRef.current;
 
@@ -224,6 +301,13 @@ function DisplayPage() {
   }, [snapshot, goalVideoEnabled]);
 
   useEffect(() => {
+    if (!goalVideoEnabled) {
+      setShowGoalVideo(false);
+      if (goalTimerRef.current !== null) {
+        window.clearTimeout(goalTimerRef.current);
+        goalTimerRef.current = null;
+      }
+    }
     return () => {
       if (goalTimerRef.current !== null) {
         window.clearTimeout(goalTimerRef.current);
@@ -310,7 +394,11 @@ function DisplayPage() {
               logo={snapshot?.teams.home.info.logoUrl}
               score={snapshot?.teams.home.score}
             />
-            <PlayerList players={snapshot?.teams.home.info.players ?? []} side="home" />
+            <PlayerList
+              players={snapshot?.teams.home.info.players ?? []}
+              side="home"
+              coachName={snapshot?.teams.home.info.coachName}
+            />
           </div>
 
           <div
@@ -397,7 +485,11 @@ function DisplayPage() {
               logo={snapshot?.teams.away.info.logoUrl}
               score={snapshot?.teams.away.score}
             />
-            <PlayerList players={snapshot?.teams.away.info.players ?? []} side="away" />
+            <PlayerList
+              players={snapshot?.teams.away.info.players ?? []}
+              side="away"
+              coachName={snapshot?.teams.away.info.coachName}
+            />
           </div>
         </div>
       </div>

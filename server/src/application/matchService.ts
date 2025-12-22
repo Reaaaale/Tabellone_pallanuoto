@@ -43,6 +43,7 @@ export class MatchService {
         this.match.updateTeamInfo(command.payload.teamId, {
           name: command.payload.name,
           logoUrl: command.payload.logoUrl,
+          coachName: command.payload.coachName,
         });
         break;
       case "set_roster":

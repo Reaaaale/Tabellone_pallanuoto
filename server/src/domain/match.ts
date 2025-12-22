@@ -47,7 +47,7 @@ export class Match {
 
   private defaultState(): MatchRuntimeState {
     const defaultInfo = (id: TeamSide): TeamRuntimeState => ({
-      info: { id, name: id === "home" ? "Casa" : "Ospiti", players: [] },
+      info: { id, name: id === "home" ? "Casa" : "Ospiti", logoUrl: "", coachName: "", players: [] },
       score: 0,
       timeoutsRemaining: 3,
     });
@@ -242,20 +242,21 @@ export class Match {
     };
   }
 
-private buildTeamState(teamId: TeamSide) {
-  const team = this.state.teams[teamId];
+  private buildTeamState(teamId: TeamSide) {
+    const team = this.state.teams[teamId];
 
-  return {
-    info: {
-      id: team.info.id,
-      name: team.info.name,
-      logoUrl: team.info.logoUrl,
-      players: [...team.info.players], // ← QUESTO
-    },
-    score: team.score,
-    timeoutsRemaining: team.timeoutsRemaining,
-  };
-}
+    return {
+      info: {
+        id: team.info.id,
+        name: team.info.name,
+        logoUrl: team.info.logoUrl,
+        coachName: team.info.coachName,
+        players: [...team.info.players],
+      },
+      score: team.score,
+      timeoutsRemaining: team.timeoutsRemaining,
+    };
+  }
 
 
   private buildClockState(now: number): ClockState {

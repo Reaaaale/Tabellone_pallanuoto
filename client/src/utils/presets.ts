@@ -3,6 +3,7 @@ import { Player } from "@tabellone/shared";
 export interface TeamPresetInput {
   name: string;
   logoUrl: string;
+  coachName?: string;
   rosterText: string;
 }
 

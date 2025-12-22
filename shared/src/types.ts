@@ -11,6 +11,7 @@ export interface TeamInfo {
   id: TeamSide;
   name: string;
   logoUrl?: string;
+  coachName?: string;
   players: Player[];
 }
 
@@ -54,7 +55,7 @@ export type CommandMessage =
   | { type: "reset_timeouts" }
   | { type: "set_player_ejections"; payload: { teamId: TeamSide; playerNumber: number; ejections: number } }
   | { type: "start_expulsion"; payload: { teamId: TeamSide; playerNumber: number } }
-  | { type: "set_team_info"; payload: { teamId: TeamSide; name?: string; logoUrl?: string } }
+  | { type: "set_team_info"; payload: { teamId: TeamSide; name?: string; logoUrl?: string; coachName?: string } }
   | { type: "set_roster"; payload: { teamId: TeamSide; players: Player[] } };
   
 

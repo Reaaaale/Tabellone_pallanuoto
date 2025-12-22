@@ -9,16 +9,16 @@ const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:4000";
 interface TeamFormState {
   name: string;
   logoUrl: string;
+  coachName: string;
   rosterText: string;
-  logoFile?: File | null;
 }
 
 function SetupPage() {
   const { send, status } = useMatchChannel(WS_URL);
   const navigate = useNavigate();
 
-  const [home, setHome] = useState<TeamFormState>({ name: "Casa", logoUrl: "", rosterText: "" });
-  const [away, setAway] = useState<TeamFormState>({ name: "Ospiti", logoUrl: "", rosterText: "" });
+  const [home, setHome] = useState<TeamFormState>({ name: "Casa", logoUrl: "", coachName: "", rosterText: "" });
+  const [away, setAway] = useState<TeamFormState>({ name: "Ospiti", logoUrl: "", coachName: "", rosterText: "" });
   const defaultQuick = () => Array.from({ length: 15 }, (_, i) => ({ number: i + 1, name: "" }));
   const [quickRoster, setQuickRoster] = useState<Record<TeamSide, { number: number; name: string }[]>>({
     home: defaultQuick(),
@@ -33,8 +33,8 @@ function SetupPage() {
   }, []);
 
   const applyPreset = (preset: RosterPreset) => {
-    setHome(preset.home);
-    setAway(preset.away);
+    setHome({ ...preset.home, coachName: preset.home.coachName ?? "" });
+    setAway({ ...preset.away, coachName: preset.away.coachName ?? "" });
     const parsedHome = parseRosterText(preset.home.rosterText || "");
     const parsedAway = parseRosterText(preset.away.rosterText || "");
     setQuickRoster({
@@ -103,18 +103,16 @@ function SetupPage() {
     const homePlayers = buildPlayers("home");
     const awayPlayers = buildPlayers("away");
 
-    const processLogo = async (team: TeamFormState) => {
-      if (team.logoFile) {
-        // In un contesto reale, qui andrebbe l'upload. Per ora, usiamo URL temporaneo.
-        return URL.createObjectURL(team.logoFile);
-      }
-      return team.logoUrl;
-    };
+    const [homeLogo, awayLogo] = [home.logoUrl, away.logoUrl];
 
-    const [homeLogo, awayLogo] = await Promise.all([processLogo(home), processLogo(away)]);
-
-    send({ type: "set_team_info", payload: { teamId: "home", name: home.name, logoUrl: homeLogo } });
-    send({ type: "set_team_info", payload: { teamId: "away", name: away.name, logoUrl: awayLogo } });
+    send({
+      type: "set_team_info",
+      payload: { teamId: "home", name: home.name, logoUrl: homeLogo, coachName: home.coachName },
+    });
+    send({
+      type: "set_team_info",
+      payload: { teamId: "away", name: away.name, logoUrl: awayLogo, coachName: away.coachName },
+    });
     send({ type: "set_roster", payload: { teamId: "home", players: homePlayers } });
     send({ type: "set_roster", payload: { teamId: "away", players: awayPlayers } });
   };
@@ -137,6 +135,11 @@ function SetupPage() {
           placeholder="Nome squadra"
           value={state.name}
           onChange={(e) => setState({ ...state, name: e.target.value })}
+        />
+        <input
+          placeholder="Allenatore"
+          value={state.coachName}
+          onChange={(e) => setState({ ...state, coachName: e.target.value })}
         />
         <div style={{ display: "flex", gap: 8 }}>
           <input
@@ -164,7 +167,12 @@ function SetupPage() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  setState({ ...state, logoFile: file, logoUrl: "" });
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const dataUrl = reader.result as string;
+                    setState({ ...state, logoUrl: dataUrl });
+                  };
+                  reader.readAsDataURL(file);
                 }
               }}
             />
