@@ -1,0 +1,10 @@
+
+# build/output
+release/
+client/dist/
+server/dist/
+node_modules/
+*.AppImage
+linux-unpacked/
+app.asar*
+

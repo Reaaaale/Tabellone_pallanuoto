@@ -1,0 +1,33 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.promogest.app
+productName: Promogest
+icon: desktop/icons/icon.png
+asarUnpack:
+  - server/dist/**
+files:
+  - filter:
+      - desktop/**
+      - client/dist/**
+      - server/dist/**
+      - shared/dist/**
+      - node_modules/ws/**
+      - package.json
+extraResources:
+  - from: node_modules/ws
+    to: app.asar.unpacked/node_modules/ws
+asar: true
+mac:
+  target:
+    - dmg
+    - zip
+win:
+  target: nsis
+linux:
+  target: AppImage
+  category: Utility
+  icon: desktop/icons
+extraMetadata:
+  main: desktop/main.js
+electronVersion: 28.3.3
