@@ -1,0 +1,70 @@
+{
+  "name": "tabellone-wp",
+  "version": "0.1.0",
+  "private": true,
+  "main": "desktop/main.js",
+  "workspaces": [
+    "server",
+    "client",
+    "shared"
+  ],
+  "scripts": {
+    "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
+    "build:client": "npm run build -w client",
+    "build:server": "npm run build -w server",
+    "dev": "npm run dev -w server",
+    "lint": "npm run lint -w server && npm run lint -w client",
+    "electron:dev": "NODE_ENV=development electron desktop/main.js",
+    "dist": "npm run build && electron-builder"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.promogest.app",
+    "productName": "Promogest",
+    "icon": "desktop/icons/icon.png",
+    "asarUnpack": [
+      "server/dist/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**",
+      "client/dist/**",
+      "server/dist/**",
+      "shared/dist/**",
+      "node_modules/ws/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/ws",
+        "to": "app.asar.unpacked/node_modules/ws"
+      }
+    ],
+    "asar": true,
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility",
+      "icon": "desktop/icons"
+    },
+    "extraMetadata": {
+      "main": "desktop/main.js"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "..",                 // ✅ IMPORTANTISSIMO
+    "baseUrl": ".",
+    "paths": {
+      "@tabellone/shared": ["../shared/src"],
+      "@tabellone/shared/*": ["../shared/src/*"]
+    }
+  },
+  "include": ["src", "../shared/src"] // ✅ includi shared
+}
