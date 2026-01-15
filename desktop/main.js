@@ -1,6 +1,6 @@
 // main.js
 const path = require("path");
-const { app, BrowserWindow, screen } = require("electron");
+const { app, BrowserWindow, screen, globalShortcut } = require("electron");
 const { fork } = require("child_process");
 const fs = require("fs");
 
@@ -159,6 +159,7 @@ function createControlWindow() {
 
   controlWindow.on("closed", () => {
     controlWindow = null;
+    app.quit();
   });
 }
 
@@ -166,6 +167,10 @@ app.whenReady().then(() => {
   startServer();
   createDisplayWindow();
   createControlWindow();
+
+  globalShortcut.register("CommandOrControl+Q", () => {
+    app.quit();
+  });
 
   const reapply = () => {
     if (!displayWindow) return;
@@ -190,4 +195,8 @@ app.on("before-quit", () => {
     serverProcess.kill();
     serverProcess = null;
   }
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });

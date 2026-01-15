@@ -14,7 +14,7 @@
     "build:server": "npm run build -w server",
     "dev": "npm run dev -w server",
     "lint": "npm run lint -w server && npm run lint -w client",
-    "electron:dev": "NODE_ENV=development electron desktop/main.js",
+    "electron:dev": "node -e \"const {spawn}=require('child_process');const path=require('path');const bin=process.platform==='win32'?'electron.cmd':'electron';const electronPath=path.join(__dirname,'node_modules','.bin',bin);spawn(electronPath,['desktop/main.js'],{stdio:'inherit',env:{...process.env,NODE_ENV:'development'}});\"",
     "dist": "npm run build && electron-builder"
   },
   "engines": {
