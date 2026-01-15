@@ -4,7 +4,9 @@ import { TeamSide } from "@tabellone/shared";
 import { useMatchChannel } from "../hooks/useMatchChannel";
 import { getPresets, parseRosterText, RosterPreset, savePresets } from "../utils/presets";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:4000";
+const WS_HOST = window.location.hostname || "127.0.0.1";
+const WS_URL = import.meta.env.VITE_WS_URL || `ws://${WS_HOST}:4000`;
+
 
 interface TeamFormState {
   name: string;

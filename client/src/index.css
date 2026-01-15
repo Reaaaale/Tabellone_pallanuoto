@@ -26,15 +26,15 @@ button {
 .card {
   background: rgba(24, 28, 36, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 .btn {
   border: none;
-  border-radius: 12px;
-  padding: 14px 18px;
+  border-radius: 9px;
+  padding: 9px 12px;
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.05s ease, box-shadow 0.2s ease;
@@ -45,15 +45,15 @@ button {
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, #2ecc71, #16a085);
+  background: linear-gradient(135deg, #2ddf8a, #1ca96a);
   color: #0b0d10;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
 }
 
 .btn.warn {
-  background: linear-gradient(135deg, #ff7f50, #ff512f);
+  background: linear-gradient(135deg, #ff8a5c, #ff5c3a);
   color: #0b0d10;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
 }
 
 .btn.ghost {

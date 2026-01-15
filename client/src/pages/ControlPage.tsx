@@ -3,7 +3,9 @@ import { TeamSide } from "@tabellone/shared";
 import { useMatchChannel } from "../hooks/useMatchChannel";
 import { formatClock } from "../utils/time";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:4000";
+const WS_HOST = window.location.hostname || "127.0.0.1";
+const WS_URL = import.meta.env.VITE_WS_URL || `ws://${WS_HOST}:4000`;
+
 
 function ControlPage() {
   const { snapshot, status, error, send } = useMatchChannel(WS_URL);
@@ -15,6 +17,15 @@ function ControlPage() {
     home: false,
     away: false,
   });
+
+  // Evita qualsiasi scroll nella pagina di controllo
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -178,34 +189,56 @@ function ControlPage() {
   const renderRosterCard = (teamId: TeamSide) => {
     const accent = teamId === "home" ? "#34d399" : "#60a5fa";
     return (
-    <div className="card" style={{ display: "grid", gridTemplateRows: "auto auto 1fr", gap: 8, minHeight: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>{teamId === "home" ? "Casa" : "Ospiti"}</div>
-        <div style={{ fontWeight: 800, fontSize: 20 }}>{snapshot?.teams[teamId].info.name}</div>
-      </div>
-      <div style={{ fontSize: 12, opacity: 0.7 }}>
-        Caricati: {snapshot?.teams[teamId].info.players.length ?? 0} giocatori
+    <div
+      className="card"
+      style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 6, minHeight: 0, height: "100%" }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+        <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 0.4 }}>
+          {teamId === "home" ? "Casa" : "Ospiti"}
+        </div>
+        <div style={{ fontWeight: 800, fontSize: 15, textAlign: "right", flex: 1 }}>
+          {snapshot?.teams[teamId].info.name}
+        </div>
+        {!isEditingRoster[teamId] && (
+          <button
+            type="button"
+            className="btn ghost"
+            style={{ padding: "6px 10px", minWidth: 0, whiteSpace: "nowrap" }}
+            onClick={() => {
+              setIsEditingRoster((prev) => ({ ...prev, [teamId]: true }));
+              setRosterText((prev) => ({
+                ...prev,
+                [teamId]:
+                  snapshot?.teams[teamId].info.players
+                    .map((p) => `${p.number} ${p.name}`)
+                    .join("\n") ?? "",
+              }));
+            }}
+          >
+            Modifica
+          </button>
+        )}
       </div>
 
       {isEditingRoster[teamId] ? (
-        <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", minHeight: 0 }}>
-          <label>Roster (numero nome, uno per riga)</label>
+        <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", minHeight: 0, gap: 6 }}>
+          <label style={{ marginBottom: 2 }}>Roster (numero nome, uno per riga)</label>
           <textarea
             style={{
               width: "100%",
-              height: 140,
-              marginTop: 4,
+              height: 110,
               background: "rgba(255,255,255,0.05)",
               color: "#f7f7f7",
-              borderRadius: 10,
-              padding: 10,
+              borderRadius: 8,
+              padding: 8,
               border: "1px solid rgba(255,255,255,0.08)",
               resize: "vertical",
             }}
             value={rosterText[teamId]}
             onChange={(e) => setRosterText({ ...rosterText, [teamId]: e.target.value })}
           />
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 4 }}>
             <button
               type="button"
               className="btn ghost"
@@ -222,18 +255,25 @@ function ControlPage() {
             >
               Annulla
             </button>
-            <button type="button" className="btn primary" onClick={() => submitRoster(teamId)}>
+            <button type="button" className="btn primary" style={{ minWidth: 110 }} onClick={() => submitRoster(teamId)}>
               Salva roster {teamId === "home" ? "Casa" : "Ospiti"}
             </button>
           </div>
         </div>
       ) : (
-        <div style={{ marginTop: 4, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div
+          style={{
+            marginTop: 4,
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gridAutoRows: "minmax(42px, auto)",
+            gap: 8,
+            minHeight: 0,
+            alignContent: "start",
+          }}
+        >
           {(() => {
             const players = snapshot?.teams[teamId].info.players ?? [];
-            const splitIndex = Math.ceil(players.length / 2);
-            const left = players.slice(0, splitIndex);
-            const right = players.slice(splitIndex);
 
             const renderPlayer = (p: { number: number; name: string; ejections: number }) => {
               const colors = [
@@ -250,10 +290,10 @@ function ControlPage() {
                 key={p.number}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "auto 1fr auto",
+                  gridTemplateColumns: "30px minmax(0, 1fr) auto",
                   alignItems: "center",
                   padding: "8px 10px",
-                  background: "rgba(255,255,255,0.03)",
+                  background: "rgba(255,255,255,0.04)",
                   borderRadius: 10,
                   gap: 10,
                 }}
@@ -262,19 +302,30 @@ function ControlPage() {
                   style={{
                     width: 30,
                     height: 30,
-                    borderRadius: 10,
+                    borderRadius: 9,
                     background: accent,
                     color: "#0c1218",
                     fontWeight: 800,
                     display: "grid",
                     placeItems: "center",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+                    boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
                   }}
                 >
                   {p.number}
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 13,
+                    lineHeight: 1.25,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {p.name}
+                </div>
+                <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                   {[0, 1, 2].map((idx) => (
                     <span
                       key={idx}
@@ -293,7 +344,7 @@ function ControlPage() {
                         display: "inline-block",
                         background: colors[idx],
                         cursor: "pointer",
-                        border: "1px solid rgba(255,255,255,0.2)",
+                        border: "1px solid rgba(255,255,255,0.22)",
                       }}
                       title={`Espulsioni: ${idx + 1}`}
                     />
@@ -303,17 +354,13 @@ function ControlPage() {
             );
             };
 
-            return (
-              <>
-                <div style={{ display: "grid", gap: 6 }}>{left.map(renderPlayer)}</div>
-                <div style={{ display: "grid", gap: 6 }}>{right.map(renderPlayer)}</div>
-              </>
-            );
+            return players.map(renderPlayer);
           })()}
-          <div style={{ gridColumn: "1 / -1", textAlign: "center" }}>
+          <div style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: 2 }}>
             <button
               type="button"
               className="btn ghost"
+              style={{ padding: "6px 10px", minWidth: 0, whiteSpace: "nowrap" }}
               onClick={() => {
                 setIsEditingRoster((prev) => ({ ...prev, [teamId]: true }));
                 setRosterText((prev) => ({
@@ -325,7 +372,7 @@ function ControlPage() {
                 }));
               }}
             >
-              Modifica roster
+              Modifica
             </button>
           </div>
         </div>
@@ -337,51 +384,53 @@ function ControlPage() {
   return (
     <div
       style={{
-        padding: 16,
-        maxWidth: 1800,
+        padding: 10,
+        maxWidth: 1640,
         margin: "0 auto",
-        minHeight: "100vh",
+        height: "100vh",
+        overflow: "hidden",
         boxSizing: "border-box",
         display: "grid",
         gridTemplateRows: "auto auto auto 1fr",
-        gap: 12,
+        gap: 6,
+        rowGap: 6,
       }}
     >
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Connessione</div>
+          <div style={{ fontSize: 11, opacity: 0.7 }}>Connessione</div>
           <div style={{ fontWeight: 700 }}>
             {status === "open" ? "Online" : status === "connecting" ? "Connessione..." : "Offline"}
           </div>
           {error && <div style={{ color: "#ff7f50" }}>{error}</div>}
         </div>
-        <div style={{ textAlign: "right", opacity: 0.7, fontSize: 12 }}>Controllo gara</div>
+        <div style={{ textAlign: "right", opacity: 0.7, fontSize: 11 }}>Controllo gara</div>
       </header>
 
       <div
         className="card"
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1.1fr 1fr",
-          gap: 16,
+          gridTemplateColumns: "1fr 0.9fr 1fr",
+          gap: 8,
           alignItems: "center",
-          background: "linear-gradient(135deg, #111720, #0c1218)",
-          padding: 20,
+          background: "linear-gradient(135deg, #0f1621, #0d141d)",
+          padding: 10,
         }}
       >
-        <div style={{ display: "grid", gap: 8 }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Casa</div>
-          <div style={{ fontSize: 30, fontWeight: 800 }}>{snapshot?.teams.home.info.name}</div>
-          <div style={{ fontSize: 58, fontWeight: 900, color: "#8efac5" }}>{snapshot?.teams.home.score ?? 0}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn primary" onClick={() => openGoalModal("home")} style={{ minWidth: 120 }}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 0.4 }}>Casa</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{snapshot?.teams.home.info.name}</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "#8efac5" }}>{snapshot?.teams.home.score ?? 0}</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button className="btn primary" onClick={() => openGoalModal("home")} style={{ minWidth: 94 }}>
               Goal Casa
             </button>
             <button
               className="btn ghost"
               disabled={(snapshot?.teams.home.score ?? 0) <= 0}
               onClick={() => send({ type: "undo_goal", payload: { teamId: "home" } })}
-              style={{ minWidth: 90 }}
+              style={{ minWidth: 74 }}
             >
               -1
             </button>
@@ -389,14 +438,14 @@ function ControlPage() {
         </div>
 
         <div style={{ textAlign: "center", display: "grid", gap: 8 }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Tempo</div>
-          <div style={{ fontSize: 74, fontWeight: 900 }}>{clockLabel}</div>
-          <div style={{ fontSize: 14 }}>Periodo {snapshot?.period ?? "-"}</div>
+          <div style={{ fontSize: 11, opacity: 0.75, textTransform: "uppercase", letterSpacing: 0.6 }}>Tempo</div>
+          <div style={{ fontSize: 52, fontWeight: 900 }}>{clockLabel}</div>
+          <div style={{ fontSize: 12, opacity: 0.8 }}>Periodo {snapshot?.period ?? "-"}</div>
           <div
             style={{
               marginTop: 4,
-              padding: "10px 12px",
-              borderRadius: 12,
+              padding: "6px 8px",
+              borderRadius: 9,
               background: "rgba(255,255,255,0.05)",
               border: "1px solid rgba(255,255,255,0.1)",
               display: "grid",
@@ -404,10 +453,10 @@ function ControlPage() {
               justifyItems: "center",
             }}
           >
-            <div style={{ fontSize: 12, opacity: 0.75 }}>Timer timeout</div>
+            <div style={{ fontSize: 10.5, opacity: 0.75 }}>Timer timeout</div>
             <div
               style={{
-                fontSize: 32,
+                fontSize: 18,
                 fontWeight: 800,
                 letterSpacing: 1,
                 fontVariantNumeric: "tabular-nums",
@@ -417,10 +466,10 @@ function ControlPage() {
               {timeoutRunning ? formatClock(timeoutMs) : "—"}
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
             <button
               className="btn primary"
-              style={{ minWidth: 140 }}
+              style={{ minWidth: 110 }}
               onClick={() => send({ type: running ? "pause_clock" : "start_clock" })}
             >
               {running ? "⏸ Pausa" : "▶️ Avvia"}
@@ -431,19 +480,19 @@ function ControlPage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 8, textAlign: "right", justifyItems: "end" }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Ospiti</div>
-          <div style={{ fontSize: 30, fontWeight: 800 }}>{snapshot?.teams.away.info.name}</div>
-          <div style={{ fontSize: 58, fontWeight: 900, color: "#8efac5" }}>{snapshot?.teams.away.score ?? 0}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <button className="btn primary" onClick={() => openGoalModal("away")} style={{ minWidth: 120 }}>
+        <div style={{ display: "grid", gap: 6, textAlign: "right", justifyItems: "end" }}>
+          <div style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase", letterSpacing: 0.4 }}>Ospiti</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{snapshot?.teams.away.info.name}</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "#8efac5" }}>{snapshot?.teams.away.score ?? 0}</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button className="btn primary" onClick={() => openGoalModal("away")} style={{ minWidth: 94 }}>
               Goal Ospiti
             </button>
             <button
               className="btn ghost"
               disabled={(snapshot?.teams.away.score ?? 0) <= 0}
               onClick={() => send({ type: "undo_goal", payload: { teamId: "away" } })}
-              style={{ minWidth: 90 }}
+              style={{ minWidth: 74 }}
             >
               -1
             </button>
@@ -451,8 +500,8 @@ function ControlPage() {
         </div>
       </div>
 
-      <div className="card" style={{ display: "grid", gap: 10 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <div className="card" style={{ display: "grid", gap: 4, gridTemplateColumns: "1fr 1.6fr", alignItems: "stretch" }}>
+        <div style={{ display: "grid", gap: 4, gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))" }}>
           <select
             value={snapshot?.period ?? 1}
             onChange={(e) => send({ type: "set_period", payload: { period: Number(e.target.value) } })}
@@ -463,31 +512,32 @@ function ControlPage() {
               </option>
             ))}
           </select>
-          <button className="btn warn" onClick={() => triggerTimeout("home")}>
-            Timeout Casa ({snapshot?.teams.home.timeoutsRemaining ?? 3})
+          <button className="btn warn" style={{ padding: "8px 10px" }} onClick={() => triggerTimeout("home")}>
+            TO Casa ({snapshot?.teams.home.timeoutsRemaining ?? 3})
           </button>
-          <button className="btn warn" onClick={() => triggerTimeout("away")}>
-            Timeout Ospiti ({snapshot?.teams.away.timeoutsRemaining ?? 3})
+          <button className="btn warn" style={{ padding: "8px 10px" }} onClick={() => triggerTimeout("away")}>
+            TO Ospiti ({snapshot?.teams.away.timeoutsRemaining ?? 3})
           </button>
           <button
             className="btn ghost"
+            style={{ padding: "8px 10px" }}
             onClick={() => {
               setTimeoutRunning(false);
               setTimeoutMs(0);
               send({ type: "reset_timeouts" });
             }}
           >
-            Reset timeout
+            Reset TO
           </button>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <input
             type="number"
             min={0}
             placeholder="Min"
             value={manualMinutes}
             onChange={(e) => setManualMinutes(e.target.value)}
-            style={{ width: 80 }}
+            style={{ width: 64 }}
           />
           <span style={{ opacity: 0.7 }}>:</span>
           <input
@@ -497,7 +547,7 @@ function ControlPage() {
             placeholder="Sec"
             value={manualSeconds}
             onChange={(e) => setManualSeconds(e.target.value)}
-            style={{ width: 80 }}
+            style={{ width: 64 }}
           />
           <button className="btn ghost" onClick={setRemainingTime}>
             Imposta tempo
@@ -505,12 +555,12 @@ function ControlPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, minHeight: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.6fr 1.3fr", gap: 6, minHeight: 0 }}>
         {renderRosterCard("home")}
 
-        <div className="card" style={{ display: "grid", gap: 12, gridTemplateRows: "auto 1fr" }}>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>Espulsioni</div>
-          <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
+        <div className="card" style={{ display: "grid", gap: 6, gridTemplateRows: "auto 1fr", minHeight: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: 0.2 }}>Espulsioni</div>
+          <div style={{ display: "grid", gap: 6, alignContent: "start" }}>
             {(snapshot?.expulsions ?? []).length > 0 ? (
               (snapshot?.expulsions ?? []).map((exp) => {
                 const teamLabel = exp.teamId === "home" ? "Casa" : "Ospiti";
@@ -521,30 +571,30 @@ function ControlPage() {
                   <div
                     key={exp.id}
                     style={{
-                      padding: "10px 12px",
-                      borderRadius: 12,
+                      padding: "6px 8px",
+                      borderRadius: 9,
                       background: "linear-gradient(135deg, rgba(0,0,0,0.35), rgba(0,0,0,0.6))",
                       border: "1px solid rgba(255,255,255,0.12)",
                       display: "grid",
                       gridTemplateColumns: "1fr auto",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 6,
                     }}
                   >
-                    <div style={{ fontWeight: 700 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12.5 }}>
                       {label} n. {exp.playerNumber} ({teamLabel})
                     </div>
                     <div
                       style={{
                         fontFamily: "monospace",
-                        fontSize: 20,
+                        fontSize: 14,
                         letterSpacing: 2,
-                        padding: "6px 10px",
-                        borderRadius: 8,
+                        padding: "3px 7px",
+                        borderRadius: 7,
                         background: "linear-gradient(180deg, #111, #050505)",
                         color: "#9ff4c5",
                         boxShadow: "inset 0 2px 6px rgba(0,0,0,0.6)",
-                        minWidth: 90,
+                        minWidth: 64,
                         textAlign: "center",
                       }}
                     >
@@ -573,13 +623,13 @@ function ControlPage() {
               if (definitives.length === 0) return null;
 
               return (
-                <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "grid", gap: 3 }}>
                   {definitives.map((item) => (
                     <div
                       key={`${item.teamId}-${item.playerNumber}`}
                       style={{
-                        padding: "8px 10px",
-                        borderRadius: 10,
+                        padding: "5px 7px",
+                        borderRadius: 7,
                         background: "rgba(230,57,70,0.15)",
                         border: "1px solid rgba(230,57,70,0.4)",
                         color: "#ffb3b3",

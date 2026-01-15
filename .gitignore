@@ -6,6 +6,7 @@ node_modules
 # Build output
 dist
 dist-ssr
+release/
 
 # Ambiente / credenziali
 .env
@@ -22,11 +23,15 @@ pnpm-debug.log*
 .eslintcache
 .turbo
 coverage
+.pytest_cache
 
 # IDE / OS
 .DS_Store
 .vscode
 .idea
+
+# Process manager
+.pm2
 
 # Python virtualenv
 venv
