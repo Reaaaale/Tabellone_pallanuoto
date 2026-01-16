@@ -122,6 +122,8 @@ function SetupPage() {
   const startMatch = async () => {
     await sendTeams();
     // Piccola attesa per evitare di chiudere la connessione prima dell'invio
+    const displayUrl = `${window.location.origin}${window.location.pathname}#/display`;
+    window.open(displayUrl, "_blank", "noopener,noreferrer");
     setTimeout(() => navigate("/control"), 150);
   };
 
@@ -296,6 +298,12 @@ function SetupPage() {
           <button className="btn primary" onClick={startMatch}>
             Avvia gara
           </button>
+          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
+            Vuoi vedere il tabellone? Apri una preview in una nuova scheda:{" "}
+            <a href="#/display" style={{ color: "#8efac5", fontWeight: 700, textDecoration: "none" }}>
+              apri display
+            </a>
+          </div>
         </div>
       </div>
     </div>
