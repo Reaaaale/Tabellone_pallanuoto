@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CommandMessage, MatchSnapshot, ServerEvent } from "@tabellone/shared";
+import { CommandMessage, EventLogEntry, MatchSnapshot, ServerEvent } from "@tabellone/shared";
 
 interface UseMatchChannelResult {
   snapshot?: MatchSnapshot;
   status: "connecting" | "open" | "closed";
   error?: string;
+  eventLog?: EventLogEntry[];
+  introVideoKey?: number;
   send: (command: CommandMessage) => void;
 }
 
@@ -12,6 +14,8 @@ export function useMatchChannel(url: string): UseMatchChannelResult {
   const socketRef = useRef<WebSocket>();
   const [snapshot, setSnapshot] = useState<MatchSnapshot>();
   const [error, setError] = useState<string>();
+  const [eventLog, setEventLog] = useState<EventLogEntry[]>();
+  const [introVideoKey, setIntroVideoKey] = useState<number>();
   const [status, setStatus] = useState<"connecting" | "open" | "closed">("connecting");
 
   useEffect(() => {
@@ -28,6 +32,10 @@ export function useMatchChannel(url: string): UseMatchChannelResult {
         setError(undefined);
       } else if (message.type === "error") {
         setError(message.payload.message);
+      } else if (message.type === "event_log") {
+        setEventLog(message.payload.entries);
+      } else if (message.type === "intro_video") {
+        setIntroVideoKey(Number(message.payload.key));
       }
     };
 
@@ -54,5 +62,5 @@ export function useMatchChannel(url: string): UseMatchChannelResult {
     []
   );
 
-  return { snapshot, status, error, send };
+  return { snapshot, status, error, eventLog, introVideoKey, send };
 }

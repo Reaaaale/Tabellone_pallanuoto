@@ -91,7 +91,6 @@ export class Match {
     this.state.clock.remainingMs = this.state.clock.periodDurationMs;
     this.state.clock.running = false;
     this.state.clock.startedAt = undefined;
-    this.state.expulsions = [];
   }
 
   setRemainingTime(remainingMs: number, now = Date.now()): void {
@@ -120,6 +119,16 @@ export class Match {
         (exp) => !(exp.teamId === teamId && exp.playerNumber === playerNumber)
       );
     }
+  }
+
+  setPlayerGoals(teamId: TeamSide, playerNumber: number, goals: number): void {
+    const team = this.state.teams[teamId];
+    if (!team) throw new CommandFailed(`Squadra ${teamId} non trovata`);
+    const idx = team.info.players.findIndex((p) => p.number === playerNumber);
+    if (idx === -1) throw new CommandFailed("Giocatore non trovato");
+    const clamped = Math.max(0, goals);
+    const player = team.info.players[idx];
+    team.info.players[idx] = { ...player, goals: clamped };
   }
 
 
@@ -231,6 +240,10 @@ export class Match {
 
   getSnapshot(now = Date.now()): MatchSnapshot {
     this.cleanupExpulsions(now);
+    const remaining = this.getClockRemaining(now);
+    if (this.state.clock.running && remaining <= 0) {
+      this.handlePeriodEnd(now);
+    }
     return {
       period: this.state.period,
       clock: this.buildClockState(now),
@@ -284,6 +297,20 @@ export class Match {
     const elapsed = now - this.state.clock.startedAt;
     const remaining = Math.max(0, this.state.clock.remainingMs - elapsed);
     return remaining;
+  }
+
+  private handlePeriodEnd(now: number) {
+    if (this.state.period >= 4) {
+      this.state.clock.remainingMs = 0;
+      this.state.clock.running = false;
+      this.state.clock.startedAt = undefined;
+      return;
+    }
+    this.state.period += 1;
+    this.state.clock.remainingMs = this.state.clock.periodDurationMs;
+    this.state.clock.running = false;
+    this.state.clock.startedAt = undefined;
+    this.state.expulsions = [];
   }
 
   private getExpulsionRemaining(exp: ExpulsionRuntimeState, now: number): number {

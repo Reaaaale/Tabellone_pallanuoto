@@ -40,6 +40,22 @@ export function startWebsocketServer(config: WebsocketServerConfig = {}) {
       try {
         const parsed: CommandMessage = JSON.parse(raw.toString());
         console.log("[ws] comando", parsed.type);
+        if (parsed.type === "get_event_log") {
+          send(ws, { type: "event_log", payload: { entries: matchService.getEventLog() } });
+          send(ws, { type: "ack", payload: { ok: true } });
+          return;
+        }
+        if (parsed.type === "reset_event_log") {
+          matchService.dispatch(parsed);
+          broadcast({ type: "snapshot", payload: matchService.snapshot() });
+          send(ws, { type: "ack", payload: { ok: true } });
+          return;
+        }
+        if (parsed.type === "play_intro") {
+          broadcast({ type: "intro_video", payload: { key: Date.now().toString() } });
+          send(ws, { type: "ack", payload: { ok: true } });
+          return;
+        }
         matchService.dispatch(parsed);
         broadcast({ type: "snapshot", payload: matchService.snapshot() });
         send(ws, { type: "ack", payload: { ok: true } });

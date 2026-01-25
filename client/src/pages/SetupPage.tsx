@@ -122,8 +122,12 @@ function SetupPage() {
   const startMatch = async () => {
     await sendTeams();
     // Piccola attesa per evitare di chiudere la connessione prima dell'invio
-    const displayUrl = `${window.location.origin}${window.location.pathname}#/display`;
-    window.open(displayUrl, "_blank", "noopener,noreferrer");
+    if (window.electronAPI?.openDisplay) {
+      window.electronAPI.openDisplay();
+    } else {
+      const displayUrl = `${window.location.origin}${window.location.pathname}#/display`;
+      window.open(displayUrl, "_blank", "noopener,noreferrer");
+    }
     setTimeout(() => navigate("/control"), 150);
   };
 

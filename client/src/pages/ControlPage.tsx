@@ -8,7 +8,7 @@ const WS_URL = import.meta.env.VITE_WS_URL || `ws://${WS_HOST}:4000`;
 
 
 function ControlPage() {
-  const { snapshot, status, error, send } = useMatchChannel(WS_URL);
+  const { snapshot, status, error, eventLog, send } = useMatchChannel(WS_URL);
   const [rosterText, setRosterText] = useState<Record<TeamSide, string>>({
     home: "",
     away: "",
@@ -129,18 +129,44 @@ function ControlPage() {
     send({ type: "set_player_ejections", payload: { teamId, playerNumber, ejections } });
   };
 
-  const [goalModal, setGoalModal] = useState<{ open: boolean; teamId: TeamSide | null }>({
+  const [goalModal, setGoalModal] = useState<{ open: boolean; teamId: TeamSide | null; mode: "add" | "edit" }>({
+    open: false,
+    teamId: null,
+    mode: "add",
+  });
+  const [penaltyModal, setPenaltyModal] = useState<{ open: boolean; teamId: TeamSide | null }>({
     open: false,
     teamId: null,
   });
 
-  const openGoalModal = (teamId: TeamSide) => setGoalModal({ open: true, teamId });
-  const closeGoalModal = () => setGoalModal({ open: false, teamId: null });
+  const openGoalModal = (teamId: TeamSide, mode: "add" | "edit" = "add") =>
+    setGoalModal({ open: true, teamId, mode });
+  const closeGoalModal = () => setGoalModal({ open: false, teamId: null, mode: "add" });
+  const openPenaltyModal = (teamId: TeamSide) => setPenaltyModal({ open: true, teamId });
+  const closePenaltyModal = () => setPenaltyModal({ open: false, teamId: null });
 
   const submitGoal = (playerNumber?: number) => {
     if (!goalModal.teamId) return;
     send({ type: "goal", payload: { teamId: goalModal.teamId, playerNumber } });
     closeGoalModal();
+  };
+
+  const adjustPlayerGoals = (teamId: TeamSide, playerNumber: number, delta: number) => {
+    const player = snapshot?.teams[teamId].info.players.find((p) => p.number === playerNumber);
+    if (!player) return;
+    const nextGoals = Math.max(0, (player.goals ?? 0) + delta);
+    send({ type: "set_player_goals", payload: { teamId, playerNumber, goals: nextGoals } });
+  };
+
+  const removeGoalScorer = (playerNumber: number) => {
+    if (!goalModal.teamId) return;
+    adjustPlayerGoals(goalModal.teamId, playerNumber, -1);
+  };
+
+  const submitPenalty = (playerNumber: number) => {
+    if (!penaltyModal.teamId) return;
+    send({ type: "penalty", payload: { teamId: penaltyModal.teamId, playerNumber } });
+    closePenaltyModal();
   };
   // Gestione tempo manuale, se si rompe il timer risetta il tempo manualmente
   const [manualMinutes, setManualMinutes] = useState("");
@@ -148,6 +174,12 @@ function ControlPage() {
   const [timeoutMs, setTimeoutMs] = useState(0);
   const [timeoutRunning, setTimeoutRunning] = useState(false);
   const TIMEOUT_DURATION = 60_000;
+  const [exportRequested, setExportRequested] = useState(false);
+
+  const goalPlayersWithGoals = goalModal.teamId
+    ? (snapshot?.teams[goalModal.teamId].info.players ?? []).filter((p) => (p.goals ?? 0) > 0)
+    : [];
+  const isGoalEditMode = goalModal.mode === "edit";
 
   const setRemainingTime = () => {
     const mins = Number(manualMinutes) || 0;
@@ -185,6 +217,162 @@ function ControlPage() {
       },
     });
   };
+
+  const buildEventLogHtml = () => {
+    const entries = eventLog ?? [];
+    const homeName = snapshot?.teams.home.info.name ?? "Casa";
+    const awayName = snapshot?.teams.away.info.name ?? "Ospiti";
+    const matchTitle = `${homeName} vs ${awayName}`;
+
+    const legendItems = [
+      { key: "goal", label: "Gol", color: "#1fa971" },
+      { key: "timeout", label: "Timeout", color: "#f59f0b" },
+      { key: "start_expulsion", label: "Espulsione", color: "#e8590c" },
+      { key: "remove_expulsion", label: "Espulsione rimossa", color: "#f97316" },
+      { key: "definitive_expulsion", label: "Espulsione definitiva", color: "#b91c1c" },
+    ];
+
+    const isDefinitive = (entry: typeof entries[number]) =>
+      entry.type === "set_player_ejections" && entry.detail?.includes("Espulsioni: 3");
+
+    const describeEntry = (entry: typeof entries[number]) => {
+      const teamLabel =
+        entry.teamId === "home" ? homeName : entry.teamId === "away" ? awayName : undefined;
+      const playerLabel = entry.playerNumber ? `#${entry.playerNumber} ${entry.playerName ?? ""}`.trim() : undefined;
+      const detail = entry.detail ? ` - ${entry.detail}` : "";
+      if (entry.type === "goal") {
+        return `Gol ${teamLabel ?? ""} ${playerLabel ?? ""}`.trim() + detail;
+      }
+      if (entry.type === "undo_goal") {
+        return `Gol annullato ${teamLabel ?? ""}`.trim() + detail;
+      }
+      if (entry.type === "penalty") {
+        return `Espulsione ${teamLabel ?? ""} ${playerLabel ?? ""}`.trim() + detail;
+      }
+      if (entry.type === "timeout") {
+        return `Timeout ${teamLabel ?? ""}`.trim() + detail;
+      }
+      if (entry.type === "reset_timeouts") {
+        return "Reset timeout";
+      }
+      if (entry.type === "start_expulsion") {
+        return `Espulsione ${teamLabel ?? ""} ${playerLabel ?? ""}`.trim() + detail;
+      }
+      if (entry.type === "remove_expulsion") {
+        return `Espulsione rimossa ${teamLabel ?? ""} ${playerLabel ?? ""}`.trim() + detail;
+      }
+      if (isDefinitive(entry)) {
+        return `Espulsione definitiva ${teamLabel ?? ""} ${playerLabel ?? ""}`.trim();
+      }
+      if (entry.type === "start_clock") return "Avvio cronometro";
+      if (entry.type === "pause_clock") return "Pausa cronometro";
+      if (entry.type === "reset_clock") return "Reset cronometro";
+      if (entry.type === "set_period") return `Cambio periodo${detail}`;
+      if (entry.type === "set_remaining_time") return `Tempo manuale${detail}`;
+      return entry.type;
+    };
+
+    const periodDurationMs = snapshot?.clock.periodDurationMs ?? 8 * 60 * 1000;
+    const rows = entries
+      .filter((entry) =>
+        entry.type === "goal" ||
+        entry.type === "timeout" ||
+        entry.type === "start_expulsion" ||
+        entry.type === "penalty" ||
+        entry.type === "remove_expulsion" ||
+        isDefinitive(entry)
+      )
+      .map((entry) => {
+        const createdAt = new Date(entry.createdAt);
+        const periodLabel = `P${entry.period}`;
+        const clockLabel = formatClock(entry.clockRemainingMs);
+        const elapsedMs = Math.max(0, periodDurationMs - entry.clockRemainingMs);
+        const elapsedLabel = formatClock(elapsedMs);
+        const timeLabel = createdAt.toLocaleString();
+        const desc = describeEntry(entry);
+        return `
+          <tr class="row row-${entry.type}">
+            <td>${periodLabel}</td>
+            <td>${clockLabel}</td>
+            <td>${elapsedLabel}</td>
+            <td>${timeLabel}</td>
+            <td>${desc}</td>
+          </tr>`;
+      })
+      .join("");
+
+    const legendHtml = legendItems
+      .map(
+        (item) =>
+          `<span class="legend-item"><span class="legend-dot" style="background:${item.color}"></span>${item.label}</span>`
+      )
+      .join("");
+
+    return `<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Eventi partita - ${matchTitle}</title>
+    <style>
+      :root { color-scheme: light; }
+      body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+      h1 { margin: 0 0 8px; font-size: 22px; }
+      h2 { margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #64748b; }
+      .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 18px; }
+      .legend-item { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+      .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+      th { background: #f8fafc; font-weight: 700; }
+      .row-goal td { background: rgba(31, 169, 113, 0.14); }
+      .row-goal td { background: rgba(31, 169, 113, 0.14); }
+      .row-timeout td { background: rgba(245, 159, 11, 0.18); }
+      .row-start_expulsion td, .row-penalty td { background: rgba(232, 89, 12, 0.18); }
+      .row-remove_expulsion td { background: rgba(249, 115, 22, 0.18); }
+      .row-set_player_ejections td { background: rgba(185, 28, 28, 0.18); }
+    </style>
+  </head>
+  <body>
+    <h1>Eventi partita</h1>
+    <h2>${matchTitle} - ${new Date().toLocaleString()}</h2>
+    <div class="legend">${legendHtml}</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Periodo</th>
+          <th>Tempo</th>
+          <th>Trascorso</th>
+          <th>Timestamp</th>
+          <th>Evento</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="5">Nessun evento registrato.</td></tr>`}
+      </tbody>
+    </table>
+  </body>
+</html>`;
+  };
+
+  const downloadEventLog = () => {
+    const html = buildEventLogHtml();
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `eventi-partita-${Date.now()}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    if (!exportRequested) return;
+    if (!eventLog) return;
+    downloadEventLog();
+    setExportRequested(false);
+  }, [exportRequested, eventLog]);
 
   const renderRosterCard = (teamId: TeamSide) => {
     const accent = teamId === "home" ? "#34d399" : "#60a5fa";
@@ -275,7 +463,7 @@ function ControlPage() {
           {(() => {
             const players = snapshot?.teams[teamId].info.players ?? [];
 
-            const renderPlayer = (p: { number: number; name: string; ejections: number }) => {
+            const renderPlayer = (p: { number: number; name: string; ejections: number; goals: number }) => {
               const colors = [
                 p.ejections >= 1 ? "#f6c744" : "rgba(255,255,255,0.15)",
                 p.ejections >= 2 ? "#f6c744" : "rgba(255,255,255,0.15)",
@@ -325,7 +513,24 @@ function ControlPage() {
                 >
                   {p.name}
                 </div>
-                <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                  {(p.goals ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{
+                        padding: "4px 8px",
+                        minWidth: 0,
+                        fontWeight: 900,
+                        borderColor: "rgba(45,223,138,0.45)",
+                        color: "#8efac5",
+                      }}
+                      onClick={() => openGoalModal(teamId, "edit")}
+                      title="Correggi marcatori"
+                    >
+                      ⚽ {p.goals}
+                    </button>
+                  )}
                   {[0, 1, 2].map((idx) => (
                     <span
                       key={idx}
@@ -404,7 +609,32 @@ function ControlPage() {
           </div>
           {error && <div style={{ color: "#ff7f50" }}>{error}</div>}
         </div>
-        <div style={{ textAlign: "right", opacity: 0.7, fontSize: 11 }}>Controllo gara</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            className="btn ghost"
+            onClick={() => send({ type: "play_intro" })}
+          >
+            Video presentazione
+          </button>
+          <button
+            className="btn ghost"
+            onClick={() => {
+              setExportRequested(true);
+              send({ type: "get_event_log" });
+            }}
+          >
+            Scarica eventi
+          </button>
+          <button
+            className="btn ghost"
+            onClick={() => {
+              send({ type: "reset_event_log" });
+            }}
+          >
+            Nuova partita
+          </button>
+          <div style={{ textAlign: "right", opacity: 0.7, fontSize: 11 }}>Controllo gara</div>
+        </div>
       </header>
 
       <div
@@ -423,8 +653,14 @@ function ControlPage() {
           <div style={{ fontSize: 18, fontWeight: 800 }}>{snapshot?.teams.home.info.name}</div>
           <div style={{ fontSize: 36, fontWeight: 900, color: "#8efac5" }}>{snapshot?.teams.home.score ?? 0}</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button className="btn primary" onClick={() => openGoalModal("home")} style={{ minWidth: 94 }}>
+            <button className="btn primary" onClick={() => openGoalModal("home", "add")} style={{ minWidth: 110 }}>
               Goal Casa
+            </button>
+            <button className="btn ghost" onClick={() => openGoalModal("home", "edit")} style={{ minWidth: 150 }}>
+              Correggi marcatori
+            </button>
+            <button className="btn ghost" onClick={() => openPenaltyModal("home")} style={{ minWidth: 94 }}>
+              Fallo da rigore
             </button>
             <button
               className="btn ghost"
@@ -485,8 +721,14 @@ function ControlPage() {
           <div style={{ fontSize: 18, fontWeight: 800 }}>{snapshot?.teams.away.info.name}</div>
           <div style={{ fontSize: 36, fontWeight: 900, color: "#8efac5" }}>{snapshot?.teams.away.score ?? 0}</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <button className="btn primary" onClick={() => openGoalModal("away")} style={{ minWidth: 94 }}>
+            <button className="btn primary" onClick={() => openGoalModal("away", "add")} style={{ minWidth: 110 }}>
               Goal Ospiti
+            </button>
+            <button className="btn ghost" onClick={() => openGoalModal("away", "edit")} style={{ minWidth: 150 }}>
+              Correggi marcatori
+            </button>
+            <button className="btn ghost" onClick={() => openPenaltyModal("away")} style={{ minWidth: 94 }}>
+              Fallo da rigore
             </button>
             <button
               className="btn ghost"
@@ -675,14 +917,170 @@ function ControlPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontWeight: 800 }}>
-                Gol {goalModal.teamId === "home" ? "Casa" : "Ospiti"}: scegli marcatore
+                {isGoalEditMode ? "Correzione marcatori" : "Segna gol"} {goalModal.teamId === "home" ? "Casa" : "Ospiti"}
               </div>
               <button className="btn ghost" onClick={closeGoalModal}>
                 Chiudi
               </button>
             </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button
+                className={`btn ${isGoalEditMode ? "ghost" : "primary"}`}
+                onClick={() => openGoalModal(goalModal.teamId!, "add")}
+                style={{ minWidth: 120 }}
+              >
+                Segna gol
+              </button>
+              <button
+                className={`btn ${isGoalEditMode ? "primary" : "ghost"}`}
+                onClick={() => openGoalModal(goalModal.teamId!, "edit")}
+                style={{ minWidth: 160 }}
+              >
+                Correggi marcatori
+              </button>
+            </div>
+            {!isGoalEditMode && (
+              <>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {(snapshot?.teams[goalModal.teamId].info.players ?? []).map((p) => (
+                    <button
+                      key={p.number}
+                      className="btn ghost"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 8px",
+                        minWidth: 140,
+                        justifyContent: "flex-start",
+                      }}
+                      onClick={() => submitGoal(p.number)}
+                    >
+                      <span
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 8,
+                          background: "rgba(255,255,255,0.12)",
+                          display: "grid",
+                          placeItems: "center",
+                          fontWeight: 800,
+                        }}
+                      >
+                        {p.number}
+                      </span>
+                      <span style={{ textAlign: "left" }}>{p.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button className="btn ghost" onClick={() => submitGoal(undefined)}>
+                    Solo +1 (senza marcatore)
+                  </button>
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    {snapshot?.teams[goalModal.teamId].info.players.length ?? 0} giocatori caricati
+                  </div>
+                </div>
+              </>
+            )}
+            {isGoalEditMode && (
+              <div style={{ display: "grid", gap: 8 }}>
+                {goalPlayersWithGoals.length === 0 && (
+                  <div style={{ fontSize: 13, opacity: 0.8 }}>
+                    Nessun marcatore da correggere.
+                  </div>
+                )}
+                {goalPlayersWithGoals.map((p) => (
+                  <div
+                    key={`edit-goal-${p.number}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(0, 1fr) auto auto auto",
+                      gap: 8,
+                      alignItems: "center",
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      #{p.number} {p.name}
+                    </div>
+                    <div
+                      style={{
+                        minWidth: 42,
+                        padding: "6px 8px",
+                        borderRadius: 8,
+                        textAlign: "center",
+                        fontWeight: 900,
+                        background: "rgba(45,223,138,0.15)",
+                        border: "1px solid rgba(45,223,138,0.35)",
+                        color: "#8efac5",
+                      }}
+                      title="Gol giocatore"
+                    >
+                      {p.goals ?? 0}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn warn"
+                      style={{ minWidth: 70 }}
+                      onClick={() => removeGoalScorer(p.number)}
+                    >
+                      -1
+                    </button>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      style={{ minWidth: 70 }}
+                      onClick={() => adjustPlayerGoals(goalModal.teamId!, p.number, 1)}
+                    >
+                      +1
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {penaltyModal.open && penaltyModal.teamId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 3000,
+            padding: 16,
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              maxWidth: 540,
+              width: "100%",
+              background: "rgba(12,32,25,0.95)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 12,
+              padding: 16,
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 800 }}>
+                Rigore {penaltyModal.teamId === "home" ? "Casa" : "Ospiti"}: scegli giocatore
+              </div>
+              <button className="btn ghost" onClick={closePenaltyModal}>
+                Chiudi
+              </button>
+            </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {(snapshot?.teams[goalModal.teamId].info.players ?? []).map((p) => (
+              {(snapshot?.teams[penaltyModal.teamId].info.players ?? []).map((p) => (
                 <button
                   key={p.number}
                   className="btn ghost"
@@ -694,7 +1092,7 @@ function ControlPage() {
                     minWidth: 140,
                     justifyContent: "flex-start",
                   }}
-                  onClick={() => submitGoal(p.number)}
+                  onClick={() => submitPenalty(p.number)}
                 >
                   <span
                     style={{
@@ -714,11 +1112,8 @@ function ControlPage() {
               ))}
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <button className="btn ghost" onClick={() => submitGoal(undefined)}>
-                Solo +1 (senza marcatore)
-              </button>
               <div style={{ fontSize: 12, opacity: 0.7 }}>
-                {snapshot?.teams[goalModal.teamId].info.players.length ?? 0} giocatori caricati
+                {snapshot?.teams[penaltyModal.teamId].info.players.length ?? 0} giocatori caricati
               </div>
             </div>
           </div>

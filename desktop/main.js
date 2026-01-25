@@ -1,6 +1,6 @@
 // main.js
 const path = require("path");
-const { app, BrowserWindow, screen, globalShortcut } = require("electron");
+const { app, BrowserWindow, screen, globalShortcut, ipcMain } = require("electron");
 const { fork } = require("child_process");
 const fs = require("fs");
 
@@ -86,16 +86,17 @@ function loadDisplayURL(win) {
 
 function loadControlURL(win) {
   if (isDev) {
-    win.loadURL("http://localhost:5173/#/setup");
+    win.loadURL("http://localhost:5173/#/");
   } else {
     if (!fs.existsSync(indexHtml)) {
       console.error("[electron] index html not found:", indexHtml);
     }
-    win.loadFile(indexHtml, { hash: "/setup" });
+    win.loadFile(indexHtml, { hash: "/" });
   }
 }
 
 function createDisplayWindow() {
+  if (displayWindow) return;
   const target = pickLedDisplay();
 
   displayWindow = new BrowserWindow({
@@ -152,6 +153,7 @@ function createControlWindow() {
     backgroundColor: "#0b0f12",
     webPreferences: {
       contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 
@@ -165,7 +167,6 @@ function createControlWindow() {
 
 app.whenReady().then(() => {
   startServer();
-  createDisplayWindow();
   createControlWindow();
 
   globalShortcut.register("CommandOrControl+Q", () => {
@@ -188,6 +189,10 @@ app.whenReady().then(() => {
       createControlWindow();
     }
   });
+});
+
+ipcMain.on("open-display", () => {
+  createDisplayWindow();
 });
 
 app.on("before-quit", () => {

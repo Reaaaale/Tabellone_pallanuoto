@@ -7,6 +7,7 @@ const WS_URL = import.meta.env.VITE_WS_URL || `ws://${WS_HOST}:4000`;
 function StartPage() {
   const navigate = useNavigate();
   const { status } = useMatchChannel(WS_URL);
+  const baseUrl = import.meta.env.BASE_URL || "/";
 
   return (
     <div className="start-shell basic-start">
@@ -80,14 +81,14 @@ function StartPage() {
         <div className="basic-logos">
           <div className="basic-logo">
             <img
-              src="/scudetto_promogest.png"
+              src={`${baseUrl}scudetto_promogest.png`}
               alt="Promogest"
               style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             />
           </div>
           <div className="basic-logo" style={{ width: 420, height: 120 }}>
             <img
-              src="/png_promogest_logo.png"
+              src={`${baseUrl}png_promogest_logo.png`}
               alt="Promogest"
               style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             />

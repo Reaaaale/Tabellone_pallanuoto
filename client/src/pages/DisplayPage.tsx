@@ -29,8 +29,8 @@ function TimeoutDots({ remaining = 0, alignRight }: { remaining?: number; alignR
           <span
             key={idx}
             style={{
-              width: 18,
-              height: 6,
+              width: 27,
+              height: 9,
               borderRadius: 999,
               background: active ? palette.accent : "rgba(255,255,255,0.14)",
               border: `1px solid ${palette.cardBorder}`,
@@ -99,7 +99,7 @@ function TeamTile({
               <div
                 style={{
                   fontWeight: 900,
-                  fontSize: 22,
+                  fontSize: 75,
                   textTransform: "uppercase",
                   color: palette.text,
                   textShadow: "0 6px 16px rgba(0,0,0,0.35)",
@@ -133,7 +133,7 @@ function TeamTile({
               <div
                 style={{
                   fontWeight: 900,
-                  fontSize: 22,
+                  fontSize: 75,
                 textTransform: "uppercase",
                 color: palette.text,
                 textShadow: "0 6px 16px rgba(0,0,0,0.35)",
@@ -174,11 +174,11 @@ function PlayerList({ players, side }: { players: PlayerRow[]; side: TeamSide })
   const displayRows: { player: PlayerRow; label?: string }[] = sorted.map((p) => ({ player: p }));
   const rowsCount = Math.max(1, displayRows.length);
   const rowStyle = {
-    display: "grid",
-    gridTemplateColumns: "30px 1fr",
+    display: "flex",
+    flexDirection: side === "home" ? "row" : "row-reverse",
     alignItems: "center",
-    padding: "1px 6px",
-    columnGap: 8,
+    padding: "0 6px",
+    gap: 8,
     background: "rgba(255,255,255,0.05)",
     borderRadius: 6,
     border: "1px solid rgba(255,255,255,0.08)",
@@ -198,14 +198,14 @@ function PlayerList({ players, side }: { players: PlayerRow[]; side: TeamSide })
     >
       <div
         style={{
-          width: 22,
-          height: 22,
+          width: 45,
+          height: 45,
           borderRadius: 5,
           background: label ? "rgba(255,255,255,0.14)" : side === "home" ? "#1faa59" : "#0f766e",
           display: "grid",
           placeItems: "center",
           fontWeight: 900,
-          fontSize: label ? 11 : 13,
+          fontSize: label ? 12 : 34,
           color: "#ffffff",
           border: label ? `1px solid ${palette.cardBorder}` : undefined,
         }}
@@ -215,37 +215,61 @@ function PlayerList({ players, side }: { players: PlayerRow[]; side: TeamSide })
 
       <div
         style={{
-          fontSize: 15,
+          fontSize: 35,
           fontWeight: 700,
           textTransform: "uppercase",
           display: "flex",
+          flexDirection: side === "home" ? "row" : "row-reverse",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: side === "home" ? "space-between" : "flex-start",
           gap: 6,
           color: palette.text,
+          flex: 1,
           minWidth: 0,
           lineHeight: 1,
         }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1 }}>
+        <span
+          style={{
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            lineHeight: 1,
+            textAlign: side === "home" ? "left" : "right",
+          }}
+        >
           {p.name}
         </span>
-        <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <span
+          style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            flexShrink: 0,
+            marginRight: side === "home" ? 0 : "auto",
+          }}
+        >
           {p.goals > 0 && (
             <span
               style={{
-                minWidth: 18,
-                padding: "1px 4px",
-                textAlign: "center",
+                minWidth: 56,
+                height: 32,
+                padding: 0,
                 borderRadius: 5,
                 background: palette.accentSoft,
                 color: palette.accent,
                 fontWeight: 800,
-                fontSize: 13,
-                marginRight: 8,
+                fontSize: 20,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+                lineHeight: 1,
               }}
               title={`${p.goals} gol`}
             >
+              <span style={{ color: "#ffffff" }}>⚽︎</span>
               {p.goals}
             </span>
           )}
@@ -259,8 +283,8 @@ function PlayerList({ players, side }: { players: PlayerRow[]; side: TeamSide })
                 <span
                   key={idx}
                   style={{
-                    width: 6,
-                    height: 6,
+                    width: 20,
+                    height: 20,
                     borderRadius: "50%",
                     display: "inline-block",
                     background: color,
@@ -321,11 +345,17 @@ function PlayerList({ players, side }: { players: PlayerRow[]; side: TeamSide })
 }
 
 function DisplayPage() {
-  const { snapshot } = useMatchChannel(WS_URL);
+  const baseUrl = import.meta.env.BASE_URL || "/";
+  const { snapshot, introVideoKey } = useMatchChannel(WS_URL);
   const [showGoalVideo, setShowGoalVideo] = useState(false);
   const [goalVideoKey, setGoalVideoKey] = useState(0);
   const [goalVideoEnabled] = useState(false);
-  const [scale, setScale] = useState(1);
+  const [showIntroVideo, setShowIntroVideo] = useState(false);
+  const [introKey, setIntroKey] = useState(0);
+  const sirenRef = useRef<HTMLAudioElement | null>(null);
+  const prevRemainingRef = useRef<number | null>(null);
+  const sirenTimeoutRef = useRef<number | null>(null);
+  const sirenPlayedRef = useRef<{ period: number; played: boolean }>({ period: 1, played: false });
   const prevHomeScoreRef = useRef<number | null>(null);
   const goalTimerRef = useRef<number | null>(null);
 
@@ -371,20 +401,50 @@ function DisplayPage() {
     };
   }, []);
 
-  // Scala dinamica per adattare lo stage 960x480 (UNA SOLA VOLTA)
   useEffect(() => {
-    const baseWidth = 960;
-    const baseHeight = 480;
-    const computeScale = () => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const next = Math.min(vw / baseWidth, vh / baseHeight);
-      setScale(next);
-    };
-    computeScale();
-    window.addEventListener("resize", computeScale);
-    return () => window.removeEventListener("resize", computeScale);
-  }, []);
+    if (!snapshot) return;
+    const prevRemaining = prevRemainingRef.current;
+    const nowRemaining = snapshot.clock.remainingMs;
+    prevRemainingRef.current = nowRemaining;
+
+    if (sirenPlayedRef.current.period !== snapshot.period) {
+      sirenPlayedRef.current = { period: snapshot.period, played: false };
+    }
+    if (prevRemaining === 0 && nowRemaining > 0) {
+      sirenPlayedRef.current.played = false;
+    }
+
+    if (!snapshot.clock.running || sirenPlayedRef.current.played) return;
+
+    if (nowRemaining <= 1200 && sirenRef.current) {
+      sirenPlayedRef.current.played = true;
+      sirenRef.current.currentTime = 0;
+      sirenRef.current.play().catch(() => undefined);
+    }
+  }, [snapshot]);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    if (sirenTimeoutRef.current !== null) {
+      window.clearTimeout(sirenTimeoutRef.current);
+      sirenTimeoutRef.current = null;
+    }
+    if (!snapshot.clock.running || snapshot.clock.remainingMs <= 0 || sirenPlayedRef.current.played) return;
+    const leadMs = 1200;
+    const delay = Math.max(0, snapshot.clock.remainingMs - leadMs);
+    sirenTimeoutRef.current = window.setTimeout(() => {
+      if (!sirenRef.current || sirenPlayedRef.current.played) return;
+      sirenPlayedRef.current.played = true;
+      sirenRef.current.currentTime = 0;
+      sirenRef.current.play().catch(() => undefined);
+    }, delay);
+  }, [snapshot?.clock.running, snapshot?.clock.remainingMs, snapshot?.period]);
+
+  useEffect(() => {
+    if (!introVideoKey) return;
+    setIntroKey(introVideoKey);
+    setShowIntroVideo(true);
+  }, [introVideoKey]);
 
   return (
     <div
@@ -407,25 +467,54 @@ function DisplayPage() {
             placeItems: "center",
           }}
         >
-          <video key={goalVideoKey} src="/goal-home.mp4" autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          <video
+            key={goalVideoKey}
+            src={`${baseUrl}goal-home.mp4`}
+            autoPlay
+            muted
+            playsInline
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          />
         </div>
       )}
 
-      {/* STAGE 960x480 centrato e scalato UNA SOLA VOLTA */}
+      {showIntroVideo && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "#000",
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          <video
+            key={introKey}
+            src={`${baseUrl}intro.mp4`}
+            autoPlay
+            muted
+            playsInline
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            onEnded={() => setShowIntroVideo(false)}
+          />
+        </div>
+      )}
+
+      <audio ref={sirenRef} src={`${baseUrl}sirena.mpeg`} preload="auto" />
+
+      {/* Layout full-screen */}
       <div
         style={{
           position: "absolute",
-          left: "50%",
-          top: "50%",
-          width: 960,
-          height: 480,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-          transformOrigin: "center",
-          padding: "8px 10px",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          padding: 4,
           boxSizing: "border-box",
           display: "grid",
-          gridTemplateColumns: "1fr 0.4fr 1fr",
-          gap: 6,
+          gridTemplateColumns: "1fr 0.8fr 1fr",
+          gap: 4,
           minHeight: 0,
         }}
       >
@@ -447,9 +536,9 @@ function DisplayPage() {
             minHeight: 0,
           }}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3, width: "100%", marginTop: 2, alignItems: "center" }}>
-            <div style={{ display: "grid", gap: 2, justifyItems: "center" }}>
-              <div style={{ width: 96, height: 96, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", marginTop: 2, alignItems: "center" }}>
+            <div style={{ display: "grid", gap: 10, justifyItems: "center" }}>
+              <div style={{ width: 200, height: 200, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 12 }}>
                 {snapshot?.teams.home.info.logoUrl ? (
                   <img
                     src={snapshot.teams.home.info.logoUrl}
@@ -463,7 +552,7 @@ function DisplayPage() {
               <TimeoutDots remaining={snapshot?.teams.home.timeoutsRemaining ?? 0} />
             </div>
             <div style={{ display: "grid", gap: 2, justifyItems: "center" }}>
-              <div style={{ width: 96, height: 96, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 10 }}>
+              <div style={{ width: 200, height: 200, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 12 }}>
                 {snapshot?.teams.away.info.logoUrl ? (
                   <img
                     src={snapshot.teams.away.info.logoUrl}
@@ -478,11 +567,11 @@ function DisplayPage() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, width: "100%" }}>
-            <div style={{ textAlign: "center", fontSize: 34, fontWeight: 900, color: palette.accent }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
+            <div style={{ textAlign: "center", fontSize:100, fontWeight: 900, color: palette.accent }}>
               {snapshot?.teams.home.score ?? 0}
             </div>
-            <div style={{ textAlign: "center", fontSize: 34, fontWeight: 900, color: palette.accent }}>
+            <div style={{ textAlign: "center", fontSize: 100 , fontWeight: 900, color: palette.accent }}>
               {snapshot?.teams.away.score ?? 0}
             </div>
           </div>
@@ -490,7 +579,7 @@ function DisplayPage() {
           <div
             style={{
               textAlign: "center",
-            fontSize: 46,
+            fontSize: 130,
             fontWeight: 900,
             lineHeight: 0.9,
             whiteSpace: "nowrap",
@@ -501,7 +590,7 @@ function DisplayPage() {
           {clockLabel}
         </div>
 
-          <div style={{ textAlign: "center", fontWeight: 800, color: palette.muted, fontSize: 14 }}>
+          <div style={{ textAlign: "center", fontWeight: 800, color: palette.muted, fontSize: 50 }}>
             Periodo {snapshot?.period ?? "-"}
           </div>
         </div>
