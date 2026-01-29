@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { TeamSide } from "@tabellone/shared";
 import { useMatchChannel } from "../hooks/useMatchChannel";
 import { formatClock } from "../utils/time";
@@ -173,7 +173,7 @@ function PlayerList({ players, side }: { players: PlayerRow[]; side: TeamSide })
   const sorted = [...players].slice(0, 14).sort((a, b) => a.number - b.number);
   const displayRows: { player: PlayerRow; label?: string }[] = sorted.map((p) => ({ player: p }));
   const rowsCount = Math.max(1, displayRows.length);
-  const rowStyle = {
+  const rowStyle: CSSProperties = {
     display: "flex",
     flexDirection: side === "home" ? "row" : "row-reverse",
     alignItems: "center",
@@ -201,7 +201,13 @@ function PlayerList({ players, side }: { players: PlayerRow[]; side: TeamSide })
           width: 45,
           height: 45,
           borderRadius: 5,
-          background: label ? "rgba(255,255,255,0.14)" : side === "home" ? "#1faa59" : "#0f766e",
+          background: label
+            ? "rgba(255,255,255,0.14)"
+            : p.number === 1 || p.number === 13
+              ? "#e11d48"
+              : side === "home"
+                ? "#1faa59"
+                : "#0f766e",
           display: "grid",
           placeItems: "center",
           fontWeight: 900,
