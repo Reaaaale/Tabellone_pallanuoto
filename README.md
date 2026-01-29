@@ -81,12 +81,16 @@ npm run dist
 ## Funzionalita'
 - Punteggio: goal +1, undo goal -1.
 - Timer gara: start/pausa/reset, set tempo rimanente manuale, periodo 1-4.
+- Fine periodo: sirena allo scadere, incremento automatico del periodo e reset a 8:00 in pausa.
 - Timeout squadra con conteggio locale 60s.
-- Espulsioni: timer 18s, espulsioni personali (giallo-giallo-rosso).
-- Roster: inserimento/edizione, due colonne numeri+nomi; coach opzionale mostrato sul display.
-- Goal modal: scelta marcatore opzionale; gol per giocatore tracciati.
+- Espulsioni: timer 18s, espulsioni personali (giallo-giallo-rosso), rimozione espulsione con log.
+- Fallo da rigore: registra evento e assegna espulsione al giocatore selezionato.
+- Roster: inserimento/edizione, due colonne numeri+nomi.
+- Goal modal: scelta marcatore opzionale; gol per giocatore tracciati e correggibili dalla Control.
 - Preset: salvataggio/caricamento (localStorage) da Setup; loghi via file salvati come data URL.
-- Display: layout 960x480, timer, punteggi, roster, coach, loghi; video gol disattivato di default.
+- Display: layout 960x480, timer, punteggi, roster, loghi; video gol disattivato di default.
+- Intro video: riproduzione `intro.mp4` sul display da Control.
+- Export eventi: download HTML con legenda colori, eventi (gol/timeout/espulsioni) e timestamp periodo.
 - Shortcut: Spacebar avvia/pausa timer (se non stai digitando in un input).
 
 ## Preset e dati locali
